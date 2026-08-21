@@ -6,6 +6,12 @@ const { primitives } = modeling;
 const { cameras, controls, drawCommands, entitiesFromSolids, prepareRender } = renderer;
 const { serialize } = stlSerializer;
 
+const sceneGuides = {
+    gridSize: [300, 300],
+    gridTicks: [50, 10],
+    axisSize: 150,
+};
+
 export function createCuboid(width, depth, height) {
     return primitives.cuboid({ size: [width, depth, height] });
 }
@@ -57,12 +63,25 @@ export function startViewer(container, geometry) {
     const renderOptions = {
         camera,
         drawCommands: {
+            drawAxis: drawCommands.drawAxis,
+            drawGrid: drawCommands.drawGrid,
             drawMesh: drawCommands.drawMesh,
         },
-        entities: entitiesFromSolids(
-            { color: [0.05, 0.55, 0.58, 1], smoothNormals: false },
-            geometry,
-        ),
+        entities: [
+            {
+                visuals: { drawCmd: "drawGrid", show: true },
+                size: sceneGuides.gridSize,
+                ticks: sceneGuides.gridTicks,
+            },
+            {
+                visuals: { drawCmd: "drawAxis", show: true },
+                size: sceneGuides.axisSize,
+            },
+            ...entitiesFromSolids(
+                { color: [0.05, 0.55, 0.58, 1], smoothNormals: false },
+                geometry,
+            ),
+        ],
         rendering: {
             background: [0.96, 0.98, 0.98, 1],
         },
@@ -112,7 +131,7 @@ export function startViewer(container, geometry) {
         if (!pointerDown) return;
 
         rotateDelta[0] += event.clientX - lastX;
-        rotateDelta[1] += event.clientY - lastY;
+        rotateDelta[1] += lastY - event.clientY;
         lastX = event.clientX;
         lastY = event.clientY;
         event.preventDefault();
