@@ -19,6 +19,7 @@ let View (geometry: obj) =
 
     Html.div [
         prop.ref container
-        prop.className "h-72 w-full cursor-grab overflow-hidden rounded-lg bg-slate-50 touch-none sm:h-96"
+        prop.className
+            "h-[30rem] w-full cursor-grab touch-none overflow-hidden rounded-box bg-slate-50 lg:h-[calc(100vh-13rem)] lg:min-h-[36rem]"
         prop.ariaLabel "Interactive view of a 100 millimetre cube"
     ]

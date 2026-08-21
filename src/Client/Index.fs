@@ -1,74 +1,163 @@
 module Index
 
 open BeamHead.Domain
+open Feliz
 
-/// Represents messages handled by the current BeamHead client.
-type Msg = NoOp
+/// Represents editable workbench values that have not yet been applied to geometry.
+type Model = {
+    XFieldSizeInput: string
+    YFieldSizeInput: string
+}
+
+/// Represents messages handled by the BeamHead workbench.
+type Msg =
+    | XFieldSizeChanged of string
+    | YFieldSizeChanged of string
 
 /// Creates the initial BeamHead client model.
-let init () = ()
+let init () = {
+    XFieldSizeInput = "100"
+    YFieldSizeInput = "100"
+}
 
 /// Applies a client message to the current model.
-let update (_: Msg) (model: unit) = model
-
-open Feliz
+let update (msg: Msg) (model: Model) =
+    match msg with
+    | XFieldSizeChanged value -> { model with XFieldSizeInput = value }
+    | YFieldSizeChanged value -> { model with YFieldSizeInput = value }
 
 let private proofCube = JscadGeometry.createCuboid ProofCube.dimensions
 
-/// Renders the current BeamHead client.
-let view (_: unit) (_: Msg -> unit) =
-    Html.section [
-        prop.className "h-screen w-screen relative overflow-hidden"
+let private fieldSizeInput (label: string) (value: string) (message: string -> Msg) (dispatch: Msg -> unit) =
+    Html.label [
+        prop.className "form-control w-full"
         prop.children [
-            Html.meta [
-                prop.name "viewport"
-                prop.content "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-            ]
-
             Html.div [
-                prop.className
-                    "absolute inset-0 bg-cover bg-center bg-fixed bg-no-repeat
-                bg-white/20 backdrop-blur-sm"
-                prop.style [ style.backgroundImageUrl "https://unsplash.it/1200/900?random" ]
+                prop.className "label"
+                prop.children [ Html.span [ prop.className "label-text font-medium"; prop.text label ] ]
             ]
-
-            Html.div [
-                prop.className "relative z-10 h-full w-full"
+            Html.label [
+                prop.className "input input-bordered flex items-center gap-2"
                 prop.children [
-                    Html.div [
-                        prop.className "flex flex-col items-center justify-center h-full"
+                    Html.input [
+                        prop.className "min-w-0 grow"
+                        prop.type'.number
+                        prop.value value
+                        prop.onChange (message >> dispatch)
+                    ]
+                    Html.span [ prop.className "text-sm text-base-content/60"; prop.text "mm" ]
+                ]
+            ]
+        ]
+    ]
+
+let private controlsCard (model: Model) dispatch =
+    Html.aside [
+        prop.className "card border border-base-300 bg-base-100 shadow-md"
+        prop.children [
+            Html.div [
+                prop.className "card-body gap-5 p-5"
+                prop.children [
+                    Html.h2 [ prop.className "card-title text-lg"; prop.text "Geometry controls" ]
+
+                    Html.label [
+                        prop.className "form-control w-full"
                         prop.children [
                             Html.div [
-                                prop.className
-                                    "bg-white/20 backdrop-blur-lg p-4 sm:p-8 rounded-xl shadow-lg border border-white/30 mx-4 sm:mx-0 max-w-full sm:max-w-2xl"
+                                prop.className "label"
                                 prop.children [
-                                    Html.h1 [
-                                        prop.className "text-center text-3xl sm:text-5xl font-bold mb-3 p-2 sm:p-4"
-                                        prop.text "BeamHead"
-                                    ]
-                                    Html.p [
-                                        prop.className "mb-3 text-center text-sm text-slate-700"
-                                        prop.text "100 x 100 x 100 mm proof cube"
-                                    ]
-                                    Html.div [
-                                        prop.className "w-full sm:w-[42rem]"
-                                        prop.children [ CubeViewer.View proofCube ]
-                                    ]
-                                    Html.div [
-                                        prop.className "flex justify-center py-4"
-                                        prop.children [
-                                            Html.button [
-                                                prop.className
-                                                    "rounded bg-teal-600 px-6 py-2 font-bold text-white outline-none hover:bg-teal-700 focus:ring-2 ring-teal-300"
-                                                prop.onClick (fun _ ->
-                                                    JscadGeometry.downloadStl "beam-head-cube-100mm.stl" proofCube)
-                                                prop.text "Export STL"
-                                            ]
-                                        ]
-                                    ]
+                                    Html.span [ prop.className "label-text font-medium"; prop.text "Machine model" ]
+                                ]
+                            ]
+                            Html.select [
+                                prop.className "select select-bordered w-full"
+                                prop.value "TrueBeam"
+                                prop.onChange (fun (_: string) -> ())
+                                prop.children [ Html.option [ prop.value "TrueBeam"; prop.text "TrueBeam" ] ]
+                            ]
+                        ]
+                    ]
+
+                    Html.div [ prop.className "divider my-0"; prop.text "Jaws" ]
+
+                    Html.div [
+                        prop.className "space-y-2"
+                        prop.children [
+                            fieldSizeInput "X field size" model.XFieldSizeInput XFieldSizeChanged dispatch
+                            fieldSizeInput "Y field size" model.YFieldSizeInput YFieldSizeChanged dispatch
+                        ]
+                    ]
+
+                    Html.div [ prop.className "divider my-0"; prop.text "MLC" ]
+
+                    Html.div [
+                        prop.className "rounded-box bg-base-200 p-4"
+                        prop.children [
+                            Html.div [
+                                prop.className "flex items-center justify-between gap-3"
+                                prop.children [
+                                    Html.span [ prop.className "font-semibold"; prop.text "Retracted" ]
+                                    Html.span [ prop.className "badge badge-outline"; prop.text "MLC" ]
+                                ]
+                            ]
+                            Html.p [
+                                prop.className "mt-1 text-sm text-base-content/70"
+                                prop.text "Simplified two-bank geometry"
+                            ]
+                        ]
+                    ]
+
+                    Html.button [
+                        prop.className "btn btn-primary mt-1 w-full"
+                        prop.onClick (fun _ -> JscadGeometry.downloadStl "beam-head-cube-100mm.stl" proofCube)
+                        prop.text "Export STL"
+                    ]
+                ]
+            ]
+        ]
+    ]
+
+let private viewerCard =
+    Html.section [
+        prop.className "card overflow-hidden border border-base-300 bg-base-100 shadow-md"
+        prop.children [
+            Html.div [
+                prop.className "border-b border-base-300 px-5 py-4"
+                prop.children [
+                    Html.h2 [ prop.className "text-lg font-semibold"; prop.text "3D preview" ]
+                    Html.p [
+                        prop.className "text-sm text-base-content/60"
+                        prop.text "100 x 100 x 100 mm proof cube"
+                    ]
+                ]
+            ]
+            Html.div [ prop.className "p-3"; prop.children [ CubeViewer.View proofCube ] ]
+        ]
+    ]
+
+/// Renders the current BeamHead client.
+let view (model: Model) (dispatch: Msg -> unit) =
+    Html.main [
+        prop.className "min-h-screen w-full bg-base-200 text-base-content"
+        prop.children [
+            Html.section [
+                prop.className "mx-auto w-[96vw] max-w-[1600px] p-4"
+                prop.children [
+                    Html.div [
+                        prop.className "navbar rounded-box border border-base-300 bg-base-100 px-4 shadow-md"
+                        prop.children [
+                            Html.div [
+                                prop.className "navbar-start"
+                                prop.children [
+                                    Html.h1 [ prop.className "text-xl font-bold tracking-tight"; prop.text "BeamHead" ]
                                 ]
                             ]
                         ]
+                    ]
+
+                    Html.div [
+                        prop.className "mt-4 grid items-start gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]"
+                        prop.children [ controlsCard model dispatch; viewerCard ]
                     ]
                 ]
             ]
