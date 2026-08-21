@@ -3,6 +3,7 @@ module Index
 open Elmish
 open SAFE
 open Shared
+open BeamHead.Domain
 
 type Model = {
     Todos: RemoteData<Todo list>
@@ -30,7 +31,11 @@ let update msg model =
         | Start() ->
             let loadTodosCmd = Cmd.OfAsync.perform todosApi.getTodos () (Finished >> LoadTodos)
 
-            { model with Todos = model.Todos.StartLoading() }, loadTodosCmd
+            {
+                model with
+                    Todos = model.Todos.StartLoading()
+            },
+            loadTodosCmd
         | Finished todos -> { model with Todos = Loaded todos }, Cmd.none
     | SaveTodo msg ->
         match msg with
@@ -48,6 +53,8 @@ let update msg model =
             Cmd.none
 
 open Feliz
+
+let private proofCube = JscadGeometry.createCuboid ProofCube.dimensions
 
 module ViewComponents =
     let todoAction model dispatch =
@@ -85,7 +92,7 @@ module ViewComponents =
                         match model.Todos with
                         | NotStarted -> Html.text "Not Started."
                         | Loading None -> Html.text "Loading..."
-                        | Loading (Some todos)
+                        | Loading(Some todos)
                         | Loaded todos ->
                             for todo in todos do
                                 Html.li [
@@ -108,14 +115,13 @@ let view model dispatch =
                 prop.name "viewport"
                 prop.content "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
             ]
-            
+
             // Background div with image and glass effect
             Html.div [
-                prop.className "absolute inset-0 bg-cover bg-center bg-fixed bg-no-repeat
+                prop.className
+                    "absolute inset-0 bg-cover bg-center bg-fixed bg-no-repeat
                 bg-white/20 backdrop-blur-sm"
-                prop.style [
-                    style.backgroundImageUrl "https://unsplash.it/1200/900?random"
-                ]
+                prop.style [ style.backgroundImageUrl "https://unsplash.it/1200/900?random" ]
             ]
 
             // Content container (the rest of your UI)
@@ -125,10 +131,9 @@ let view model dispatch =
                     // Your existing content here
                     Html.a [
                         prop.href "https://safe-stack.github.io/"
-                        prop.className "absolute block ml-4 sm:ml-12 h-10 w-10 sm:h-12 sm:w-12 bg-teal-300 hover:cursor-pointer hover:bg-teal-400"
-                        prop.children [
-                            Html.img [ prop.src "/favicon.png"; prop.alt "Logo" ]
-                        ]
+                        prop.className
+                            "absolute block ml-4 sm:ml-12 h-10 w-10 sm:h-12 sm:w-12 bg-teal-300 hover:cursor-pointer hover:bg-teal-400"
+                        prop.children [ Html.img [ prop.src "/favicon.png"; prop.alt "Logo" ] ]
                     ]
 
 
@@ -136,11 +141,32 @@ let view model dispatch =
                         prop.className "flex flex-col items-center justify-center h-full"
                         prop.children [
                             Html.div [
-                                prop.className "bg-white/20 backdrop-blur-lg p-4 sm:p-8 rounded-xl shadow-lg border border-white/30 mx-4 sm:mx-0 max-w-full sm:max-w-2xl"
+                                prop.className
+                                    "bg-white/20 backdrop-blur-lg p-4 sm:p-8 rounded-xl shadow-lg border border-white/30 mx-4 sm:mx-0 max-w-full sm:max-w-2xl"
                                 prop.children [
                                     Html.h1 [
                                         prop.className "text-center text-3xl sm:text-5xl font-bold mb-3 p-2 sm:p-4"
-                                        prop.text "beam_head"
+                                        prop.text "BeamHead"
+                                    ]
+                                    Html.p [
+                                        prop.className "mb-3 text-center text-sm text-slate-700"
+                                        prop.text "100 x 100 x 100 mm proof cube"
+                                    ]
+                                    Html.div [
+                                        prop.className "w-full sm:w-[42rem]"
+                                        prop.children [ CubeViewer.View proofCube ]
+                                    ]
+                                    Html.div [
+                                        prop.className "flex justify-center py-4"
+                                        prop.children [
+                                            Html.button [
+                                                prop.className
+                                                    "rounded bg-teal-600 px-6 py-2 font-bold text-white outline-none hover:bg-teal-700 focus:ring-2 ring-teal-300"
+                                                prop.onClick (fun _ ->
+                                                    JscadGeometry.downloadStl "beam-head-cube-100mm.stl" proofCube)
+                                                prop.text "Export STL"
+                                            ]
+                                        ]
                                     ]
                                     ViewComponents.todoList model dispatch
                                 ]

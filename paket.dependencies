@@ -9,3 +9,7 @@ nuget SAFE.Client ~> 5
 nuget Fake.Core.Target ~> 5
 nuget Fake.IO.FileSystem ~> 5
 nuget Farmer ~> 1
+
+nuget Microsoft.NET.Test.Sdk ~> 17
+nuget xunit ~> 2
+nuget xunit.runner.visualstudio ~> 3

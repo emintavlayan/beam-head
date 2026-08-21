@@ -6,6 +6,9 @@
     },
     "scripts": {},
     "dependencies": {
+        "@jscad/modeling": "^2.13.0",
+        "@jscad/regl-renderer": "^2.6.15",
+        "@jscad/stl-serializer": "^2.1.23",
         "react": "^18.2.0",
         "react-dom": "^18.2.0"
     },
