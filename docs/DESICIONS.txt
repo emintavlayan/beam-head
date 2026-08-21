@@ -1,0 +1,264 @@
+BeamHead decision log
+
+2026-08-21
+Times are approximate working-session times unless a Git commit time is shown.
+
+
+08:20 - Restarted BeamHead from a clean repository
+  - Nothing from the previous experiment was important enough to preserve.
+  - GitHub repository: beam-head
+  - Local folder: beam-head
+  - Product, solution and F# naming: BeamHead / BeamHead.*
+  - Human-facing documents and UI use BeamHead.
+  - Started from the standard SAFE template, not the minimal template.
+  - The aim is a clean baseline instead of carrying old folders and assumptions forward.
+
+
+08:25 - Chose SAFE Stack + F# as the application foundation
+  - SAFE gives us a working full-stack F# application and MVU client from day one.
+  - F# is useful here because geometry can stay strongly typed, small and mostly pure.
+  - The compiler should help catch mistakes before geometry reaches TOPAS.
+  - We keep the generated SAFE infrastructure when it already solves the problem.
+  - We do not modernize or replace template infrastructure without a concrete reason.
+  - .NET SDK policy comes from the generated project/global.json rather than hand-building a custom solution first.
+  - Initial SAFE baseline commit:
+    - 87f67a1 - chore: initialize BeamHead with SAFE template
+
+
+08:45 - Wrote a short development doctrine for Codex and for ourselves
+  - File: docs/DOCTRINE.md
+  - Lightweight DDD only.
+  - Small, well-named modules and domain types.
+  - Pure functions and immutable data where practical.
+  - Side effects stay at application/infrastructure boundaries.
+  - Result<'T, string> for expected failures.
+  - FsToolkit.ErrorHandling when Result composition benefits from a computation expression.
+  - Avoid speculative abstractions, unnecessary interfaces and unnecessary classes.
+  - TrueBeam is first, but TrueBeam should be an implementation detail rather than a reason to make the whole codebase impossible to extend later.
+  - We only generalize when a current requirement makes the abstraction useful.
+  - Doctrine commit:
+    - bbb8a55 - docs: define BeamHead development doctrine
+
+
+08:50 - Chose conventional xUnit tests
+  - Use xUnit and [<Fact>] tests.
+  - Use descriptive backtick test names.
+  - Prefer standard Assert functions.
+  - Production code can be strongly functional F#.
+  - Test code should remain obvious to colleagues coming from C#/.NET.
+  - Avoid special F# testing DSLs unless there is a clear reason.
+
+
+09:00 - Chose F# units of measure for physical geometry
+  - Defined [<Measure>] type mm.
+  - Physical geometry dimensions and positions use float<mm>.
+  - Raw float values should not be scattered through the domain.
+  - Units are removed only when crossing an external boundary such as JSCAD/JavaScript interop or serialization.
+  - This is a deliberate safety feature: dimensional mistakes should be visible to the F# compiler.
+
+
+09:03 - Proved the complete geometry path with one cube
+  - First vertical slice was deliberately simple:
+    - F# domain
+      - JSCAD geometry
+        - browser 3D viewer
+          - STL export
+  - Used a fixed 100 x 100 x 100 mm cube.
+  - This proved that the chosen stack can generate geometry, display it interactively and export the same geometry as STL before we start modelling the linac.
+  - Geometry stays independent from the UI.
+  - JSCAD is kept at the application/client boundary rather than inside the physical domain.
+  - Cube proof commit:
+    - a3d2a48 - Add interactive JSCAD cube proof of concept
+
+
+09:12 - Removed SAFE Todo template baggage
+  - Removed Todo domain, Todo UI, Todo remoting endpoint and Todo tests.
+  - Kept the SAFE client/server/build infrastructure.
+  - Added BeamHead.Domain.
+  - Moved physical geometry into the domain.
+  - Kept the cube as a technical proof only.
+  - Neutral baseline commit:
+    - ae71d38 - Establish neutral BeamHead baseline
+
+
+09:20 - Defined the actual scope of BeamHead
+  - BeamHead is a geometry tool before Monte Carlo.
+  - Core flow:
+    - machine geometry + user positions
+      - validated physical geometry
+        - 3D representation
+          - STL
+  - We currently use Varian phase-space files, so BeamHead does not need to model:
+    - beam energy
+    - dose
+    - source spectra
+    - monitor chamber physics
+    - commissioning database
+  - These are outside the current scope unless a future requirement changes that.
+  - The immediate useful output is an STL containing jaws and MLC geometry for TOPAS.
+
+
+10:00 - Kept the viewer close to standard JSCAD behaviour
+  - Mouse rotation was made more natural.
+  - Added normal JSCAD grid and XYZ axis guides.
+  - Kept rotate and zoom interaction.
+  - Did not build a custom orientation cube/gizmo.
+  - That can wait because it does not improve Monte Carlo geometry quality.
+  - Viewer commit:
+    - 04da848 - Align JSCAD viewer controls and guides
+
+
+10:20 - Reused the visual language from Topas Run Orchestration
+  - DaisyUI + Tailwind are used for a restrained workbench UI.
+  - Visual reference: emintavlayan/topas-run-orchestration.
+  - We reuse the clean card/navbar/form language, not its workflow wizard.
+  - Initial BeamHead page shape:
+    - top navbar
+    - left geometry/control card
+    - large 3D viewer on the right
+  - No tabs, stepper, settings system or extra navigation yet.
+  - Machine dropdown currently contains only TrueBeam.
+  - UI is intentionally secondary to getting correct STL geometry into TOPAS.
+  - Workbench commit:
+    - dfc4ca6 - Add initial BeamHead workbench UI
+
+
+10:45 - Managed Node version locally instead of fighting hospital IT
+  - The managed machine has system Node 24 earlier in PATH than NVM.
+  - SAFE client package.json supports Node 18, 20 or 22 and npm 9 or 10.
+  - nvm use 22.18.0 alone did not work because C:\Program Files\nodejs\node.exe won PATH resolution.
+  - Working session-local solution:
+    - prepend C:\Users\etav0001\AppData\Local\nvm\v22.18.0 to PATH
+  - This keeps the hospital-managed Node installation untouched.
+  - Current working development Node: 22.18.0.
+  - A small project-local helper script can be added later if this becomes annoying.
+
+
+11:30 - Decided not to overbuild the first TrueBeam UI
+  - One machine only: TrueBeam.
+  - The machine dropdown can remain because it costs almost nothing and communicates intent.
+  - Jaws will eventually have field-size controls.
+  - MLC is currently a simplified retracted two-bank model.
+  - We do not expose fake leaf controls before we actually support leaf geometry.
+  - UI polish can wait until the STL geometry is defensible.
+
+
+12:30 - Chose one global physical coordinate system
+  - Global origin is CAX at the target/source plane:
+    - (0, 0, 0)
+  - +Z points downstream toward the patient.
+  - Isocentre is:
+    - (0, 0, 1000 mm)
+  - All jaw and MLC poses will ultimately be expressed in this same machine coordinate system.
+  - This keeps source divergence, component placement, phase-space location and TOPAS placement understandable in one frame.
+
+
+12:45 - Chose a common jaw placement reference
+  - X and Y jaws use the same kind of local reference point.
+  - Jaw reference point:
+    - midpoint of the aperture-forming face at the jaw midplane
+  - We do not model the mechanical motor, carriage or hinge unless a real need appears.
+  - We only need the final rigid-body pose used to generate the STL.
+  - This avoids inventing undocumented mechanical pivot locations.
+
+
+13:00 - Fixed the jaw focusing model around the real source extent
+  - TrueBeam jaw divergence should not be treated as if every jaw face focuses to a mathematical point on CAX.
+  - Lloyd reports the jaw divergence as projecting back to a 3 x 3 mm square in the target/source plane.
+  - For a symmetric field, each jaw edge therefore uses the corresponding source-plane edge:
+    - positive side: +1.5 mm
+    - negative side: -1.5 mm
+  - The field edge at isocentre is connected to the corresponding +/-1.5 mm source-plane edge when calculating jaw position and angle.
+  - This matters more to Monte Carlo behaviour than reproducing an undocumented carriage mechanism.
+
+
+13:10 - Fixed the X-jaw working geometry convention
+  - Jaw physical thickness:
+    - 78 mm
+  - Current literature-derived X-jaw reference/midplane position:
+    - Z = 406 mm from source
+  - X jaws move linearly and tilt so the aperture-forming face stays focused with the beam divergence.
+  - We calculate the final rigid pose directly.
+  - We do not invent a physical tilt pivot.
+
+
+13:20 - Fixed the Y-jaw working geometry convention
+  - The reproduced Varian drawing shows:
+    - Y-jaw arc trajectory R1 = 28 cm
+    - jaw thickness = 3.1 in = 7.8 cm
+  - We interpret the 280 mm radius as the radius to the upstream jaw face shown in the drawing.
+  - Because our common jaw reference is the midpoint of the aperture-forming face at the jaw midplane:
+    - half thickness = 78 / 2 = 39 mm
+    - Y-jaw reference radius = 280 + 39 = 319 mm
+  - The 39 mm offset is along the jaw local radial direction.
+  - It is not a blind +39 mm global-Z shift.
+  - Y jaws follow an arc and remain focused while moving.
+
+
+13:30 - Reduced the first useful TrueBeam output to a fixed 40 x 40 cm field
+  - First production-oriented geometry:
+    - TrueBeam only
+    - 400 x 400 mm field at isocentre
+    - four jaws
+  - Fixed field edges:
+    - X = +/-200 mm at isocentre
+    - Y = +/-200 mm at isocentre
+  - Field-size editing is postponed.
+  - MLC is postponed until the jaw STL has been generated, checked and used in TOPAS.
+  - This is a schedule decision, not an architecture limitation.
+  - We keep strong domain types and tests even though the UI is static for now.
+
+
+13:35 - Chose what must be exact and what may be simplified in the first jaw STL
+  - Keep exact where currently supported:
+    - global coordinate convention
+    - isocentre distance
+    - source-plane divergence extent
+    - jaw thickness
+    - X-jaw reference position
+    - Y-jaw arc/reference radius
+    - jaw focusing direction
+    - symmetric +/- jaw placement
+  - Outer jaw body dimensions may be simplified if the exact vendor shape is not publicly supported.
+  - Any simplified outer dimension must live in one clearly named TrueBeam constant.
+  - The code must label it as a modelling approximation.
+  - Placement mathematics must not depend on a hidden magic number.
+  - We can replace the simplified body shape later without rewriting jaw placement.
+
+
+13:40 - Decided the next validation gate before starting TOPAS production runs
+  - Codex will implement the static 40 x 40 jaw geometry.
+  - It must report the calculated X/Y jaw reference positions and angles.
+  - We will independently inspect those values.
+  - xUnit tests must confirm the geometry projects to +/-200 mm at isocentre.
+  - The viewer and STL must use the same calculated domain geometry.
+  - Only after that do we use the STL in TOPAS.
+  - Next geometry after jaws:
+    - simplified retracted Millennium 120 MLC banks
+  - App flexibility and nicer UX come later.
+
+
+Evidence used for today's jaw decisions
+
+  - Samantha A. M. Lloyd, PhD thesis, 2017:
+    - "Measurement and Monte Carlo simulation of electron fields for modulated electron radiation therapy"
+    - Chapter 6 / jaw-model discussion and Figure 6.2 were used for the TrueBeam jaw trajectory/focusing model.
+    - Important point used today: jaw divergence projects back to a 3 x 3 mm square in the target/source plane.
+
+  - Maduka M. Kaluarachchi et al., Medical Physics, 2020:
+    - "Validation of a Monte Carlo model for multi leaf collimator based electron delivery"
+    - Confirms the different TrueBeam jaw motions:
+      - Y jaws follow an arc trajectory.
+      - X jaws follow a linear trajectory and tilt to remain focused.
+    - Their detailed model used vendor information/CAD for complex head components.
+
+  - Weili Zhong et al., 2022:
+    - "Monte Carlo simulation of Cherenkov imaging for Total Skin Electron Treatment with CT DICOM realistic patient geometry"
+    - Figure 1 reproduces a Varian treatment-head drawing.
+    - The drawing shows:
+      - Y-jaw arc trajectory R1 = 28 cm
+      - jaw thickness = 3.1 in [7.8 cm]
+    - We use those drawing values as the basis for the current Y-jaw radius/thickness convention.
+
+  - Current modelling rule:
+    - When public sources give motion/placement information but not the complete vendor CAD body, keep the known placement physics exact and keep unsupported outer-body detail explicitly approximate.

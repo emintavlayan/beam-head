@@ -4,19 +4,53 @@ namespace BeamHead.Domain
 [<Measure>]
 type mm
 
-/// Describes the physical dimensions of an axis-aligned cuboid.
-type CuboidDimensions = {
-    Width: float<mm>
-    Depth: float<mm>
-    Height: float<mm>
+/// Represents a point in the BeamHead coordinate system.
+type Point3 = {
+    X: float<mm>
+    Y: float<mm>
+    Z: float<mm>
 }
 
-/// Provides the fixed geometry used by the first BeamHead proof of concept.
+/// Identifies the axis along which a jaw closes.
+type JawAxis =
+    | X
+    | Y
+
+/// Identifies the side of the beam aperture controlled by a jaw.
+type JawSide =
+    | Negative
+    | Positive
+
+/// Describes the dimensions of a simplified rectangular jaw body.
+type JawBodyDimensions = {
+    ClosingAxisExtent: float<mm>
+    CrossAxisExtent: float<mm>
+    Thickness: float<mm>
+}
+
+/// Describes a divergent aperture line in one transverse axis.
+type DivergentApertureLine = {
+    SourcePlaneEdge: float<mm>
+    IsocentrePlaneEdge: float<mm>
+}
+
+/// Describes a final rigid jaw pose whose reference is the aperture-forming face midpoint at the jaw midplane.
+type JawPlacement = {
+    Axis: JawAxis
+    Side: JawSide
+    ApertureFaceMidpoint: Point3
+    ApertureFaceAngleRadians: float
+    BodyDimensions: JawBodyDimensions
+}
+
+/// Provides calculations for divergent aperture lines.
 [<RequireQualifiedAccess>]
-module ProofCube =
-    /// The dimensions of the 100 x 100 x 100 mm proof cube.
-    let dimensions = {
-        Width = 100.0<mm>
-        Depth = 100.0<mm>
-        Height = 100.0<mm>
-    }
+module DivergentApertureLine =
+    /// Calculates the transverse aperture coordinate at a downstream Z position.
+    let coordinateAt (isocentreZ: float<mm>) (z: float<mm>) (line: DivergentApertureLine) =
+        line.SourcePlaneEdge
+        + (line.IsocentrePlaneEdge - line.SourcePlaneEdge) * z / isocentreZ
+
+    /// Calculates the signed angle of the aperture line from the positive Z axis.
+    let angleRadians (isocentreZ: float<mm>) (line: DivergentApertureLine) =
+        atan ((line.IsocentrePlaneEdge - line.SourcePlaneEdge) / isocentreZ)

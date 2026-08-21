@@ -3,32 +3,21 @@ module Index
 open BeamHead.Domain
 open Feliz
 
-/// Represents editable workbench values that have not yet been applied to geometry.
-type Model = {
-    XFieldSizeInput: string
-    YFieldSizeInput: string
-}
+/// Represents the static TrueBeam workbench state.
+type Model = unit
 
-/// Represents messages handled by the BeamHead workbench.
-type Msg =
-    | XFieldSizeChanged of string
-    | YFieldSizeChanged of string
+/// Represents messages handled by the static TrueBeam workbench.
+type Msg = | NoOp
 
 /// Creates the initial BeamHead client model.
-let init () = {
-    XFieldSizeInput = "100"
-    YFieldSizeInput = "100"
-}
+let init () = ()
 
 /// Applies a client message to the current model.
-let update (msg: Msg) (model: Model) =
-    match msg with
-    | XFieldSizeChanged value -> { model with XFieldSizeInput = value }
-    | YFieldSizeChanged value -> { model with YFieldSizeInput = value }
+let update (_: Msg) (model: Model) = model
 
-let private proofCube = JscadGeometry.createCuboid ProofCube.dimensions
+let private trueBeamJaws = JscadGeometry.createJaws TrueBeamJaws.placements
 
-let private fieldSizeInput (label: string) (value: string) (message: string -> Msg) (dispatch: Msg -> unit) =
+let private staticFieldSize (label: string) =
     Html.label [
         prop.className "form-control w-full"
         prop.children [
@@ -36,29 +25,24 @@ let private fieldSizeInput (label: string) (value: string) (message: string -> M
                 prop.className "label"
                 prop.children [ Html.span [ prop.className "label-text font-medium"; prop.text label ] ]
             ]
-            Html.label [
-                prop.className "input input-bordered flex items-center gap-2"
+            Html.div [
+                prop.className "input input-bordered flex items-center gap-2 bg-base-200"
                 prop.children [
-                    Html.input [
-                        prop.className "min-w-0 grow"
-                        prop.type'.number
-                        prop.value value
-                        prop.onChange (message >> dispatch)
-                    ]
+                    Html.span [ prop.className "grow"; prop.text "400" ]
                     Html.span [ prop.className "text-sm text-base-content/60"; prop.text "mm" ]
                 ]
             ]
         ]
     ]
 
-let private controlsCard (model: Model) dispatch =
+let private controlsCard =
     Html.aside [
         prop.className "card border border-base-300 bg-base-100 shadow-md"
         prop.children [
             Html.div [
                 prop.className "card-body gap-5 p-5"
                 prop.children [
-                    Html.h2 [ prop.className "card-title text-lg"; prop.text "Geometry controls" ]
+                    Html.h2 [ prop.className "card-title text-lg"; prop.text "Geometry" ]
 
                     Html.label [
                         prop.className "form-control w-full"
@@ -69,48 +53,29 @@ let private controlsCard (model: Model) dispatch =
                                     Html.span [ prop.className "label-text font-medium"; prop.text "Machine model" ]
                                 ]
                             ]
-                            Html.select [
-                                prop.className "select select-bordered w-full"
-                                prop.value "TrueBeam"
-                                prop.onChange (fun (_: string) -> ())
-                                prop.children [ Html.option [ prop.value "TrueBeam"; prop.text "TrueBeam" ] ]
+                            Html.div [
+                                prop.className "select select-bordered flex w-full items-center bg-base-200"
+                                prop.text "TrueBeam"
                             ]
                         ]
                     ]
 
-                    Html.div [ prop.className "divider my-0"; prop.text "Jaws" ]
+                    Html.div [ prop.className "divider my-0"; prop.text "Static jaws" ]
 
                     Html.div [
                         prop.className "space-y-2"
-                        prop.children [
-                            fieldSizeInput "X field size" model.XFieldSizeInput XFieldSizeChanged dispatch
-                            fieldSizeInput "Y field size" model.YFieldSizeInput YFieldSizeChanged dispatch
-                        ]
+                        prop.children [ staticFieldSize "X field size"; staticFieldSize "Y field size" ]
                     ]
 
-                    Html.div [ prop.className "divider my-0"; prop.text "MLC" ]
-
-                    Html.div [
-                        prop.className "rounded-box bg-base-200 p-4"
-                        prop.children [
-                            Html.div [
-                                prop.className "flex items-center justify-between gap-3"
-                                prop.children [
-                                    Html.span [ prop.className "font-semibold"; prop.text "Retracted" ]
-                                    Html.span [ prop.className "badge badge-outline"; prop.text "MLC" ]
-                                ]
-                            ]
-                            Html.p [
-                                prop.className "mt-1 text-sm text-base-content/70"
-                                prop.text "Simplified two-bank geometry"
-                            ]
-                        ]
+                    Html.p [
+                        prop.className "text-sm text-base-content/70"
+                        prop.text "Fixed 400 x 400 mm field at isocentre"
                     ]
 
                     Html.button [
                         prop.className "btn btn-primary mt-1 w-full"
-                        prop.onClick (fun _ -> JscadGeometry.downloadStl "beam-head-cube-100mm.stl" proofCube)
-                        prop.text "Export STL"
+                        prop.onClick (fun _ -> JscadGeometry.downloadStl "truebeam-jaws-400x400mm.stl" trueBeamJaws)
+                        prop.text "Export four-jaw STL"
                     ]
                 ]
             ]
@@ -127,16 +92,16 @@ let private viewerCard =
                     Html.h2 [ prop.className "text-lg font-semibold"; prop.text "3D preview" ]
                     Html.p [
                         prop.className "text-sm text-base-content/60"
-                        prop.text "100 x 100 x 100 mm proof cube"
+                        prop.text "TrueBeam X and Y jaws - static 400 x 400 mm field"
                     ]
                 ]
             ]
-            Html.div [ prop.className "p-3"; prop.children [ CubeViewer.View proofCube ] ]
+            Html.div [ prop.className "p-3"; prop.children [ GeometryViewer.View trueBeamJaws ] ]
         ]
     ]
 
 /// Renders the current BeamHead client.
-let view (model: Model) (dispatch: Msg -> unit) =
+let view (_: Model) (_: Msg -> unit) =
     Html.main [
         prop.className "min-h-screen w-full bg-base-200 text-base-content"
         prop.children [
@@ -157,7 +122,7 @@ let view (model: Model) (dispatch: Msg -> unit) =
 
                     Html.div [
                         prop.className "mt-4 grid items-start gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]"
-                        prop.children [ controlsCard model dispatch; viewerCard ]
+                        prop.children [ controlsCard; viewerCard ]
                     ]
                 ]
             ]

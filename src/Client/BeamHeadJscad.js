@@ -3,21 +3,52 @@ import renderer from "@jscad/regl-renderer";
 import stlSerializer from "@jscad/stl-serializer";
 
 const { primitives } = modeling;
+const { colorize } = modeling.colors;
+const { rotateX, rotateY, translate } = modeling.transforms;
 const { cameras, controls, drawCommands, entitiesFromSolids, prepareRender } = renderer;
 const { serialize } = stlSerializer;
 
 const sceneGuides = {
-    gridSize: [300, 300],
+    gridSize: [700, 700],
     gridTicks: [50, 10],
-    axisSize: 150,
+    axisSize: 500,
 };
 
-export function createCuboid(width, depth, height) {
-    return primitives.cuboid({ size: [width, depth, height] });
+export function createJaw(
+    axis,
+    side,
+    closingAxisExtent,
+    crossAxisExtent,
+    thickness,
+    referenceX,
+    referenceY,
+    referenceZ,
+    apertureFaceAngleRadians,
+) {
+    const sideSign = side === "positive" ? 1 : -1;
+    const size = axis === "x"
+        ? [closingAxisExtent, crossAxisExtent, thickness]
+        : [crossAxisExtent, closingAxisExtent, thickness];
+    const localCentre = axis === "x"
+        ? [sideSign * closingAxisExtent / 2, 0, 0]
+        : [0, sideSign * closingAxisExtent / 2, 0];
+
+    let jaw = primitives.cuboid({ size });
+    jaw = translate(localCentre, jaw);
+    jaw = axis === "x"
+        ? rotateY(apertureFaceAngleRadians, jaw)
+        : rotateX(-apertureFaceAngleRadians, jaw);
+    jaw = translate([referenceX, referenceY, referenceZ], jaw);
+
+    const viewerColor = axis === "x"
+        ? [0.05, 0.55, 0.58, 1]
+        : [0.88, 0.42, 0.12, 1];
+
+    return colorize(viewerColor, jaw);
 }
 
-export function downloadStl(fileName, geometry) {
-    const data = serialize({ binary: true }, geometry);
+export function downloadStl(fileName, geometries) {
+    const data = serialize({ binary: true }, ...geometries);
     const blob = new Blob(data, { type: "model/stl" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -35,8 +66,8 @@ export function startViewer(container, geometry) {
     const orbitControls = controls.orbit;
     const camera = {
         ...perspectiveCamera.defaults,
-        position: [180, 180, 140],
-        target: [0, 0, 0],
+        position: [450, 450, 650],
+        target: [0, 0, 350],
     };
     let controlState = { ...orbitControls.defaults };
     let updateView = true;
@@ -78,7 +109,7 @@ export function startViewer(container, geometry) {
                 size: sceneGuides.axisSize,
             },
             ...entitiesFromSolids(
-                { color: [0.05, 0.55, 0.58, 1], smoothNormals: false },
+                { smoothNormals: false },
                 geometry,
             ),
         ],

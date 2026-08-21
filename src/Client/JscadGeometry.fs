@@ -3,15 +3,49 @@ module JscadGeometry
 open BeamHead.Domain
 open Fable.Core
 
-[<Import("createCuboid", "./BeamHeadJscad.js")>]
-let private createJscadCuboid (width: float) (depth: float) (height: float) : obj = jsNative
+[<Import("createJaw", "./BeamHeadJscad.js")>]
+let private createJscadJaw
+    (axis: string)
+    (side: string)
+    (closingAxisExtent: float)
+    (crossAxisExtent: float)
+    (thickness: float)
+    (referenceX: float)
+    (referenceY: float)
+    (referenceZ: float)
+    (apertureFaceAngleRadians: float)
+    : obj =
+    jsNative
 
 [<Import("downloadStl", "./BeamHeadJscad.js")>]
-let private downloadJscadStl (fileName: string) (geometry: obj) : unit = jsNative
+let private downloadJscadStl (fileName: string) (geometry: obj array) : unit = jsNative
 
-/// Translates technology-independent cuboid dimensions into JSCAD geometry.
-let createCuboid (dimensions: CuboidDimensions) =
-    createJscadCuboid (float dimensions.Width) (float dimensions.Depth) (float dimensions.Height)
+/// Translates a calculated domain jaw placement into a JSCAD solid.
+let createJaw (placement: JawPlacement) =
+    let axis =
+        match placement.Axis with
+        | X -> "x"
+        | Y -> "y"
 
-/// Downloads a JSCAD geometry as a binary STL file.
+    let side =
+        match placement.Side with
+        | Negative -> "negative"
+        | Positive -> "positive"
+
+    createJscadJaw
+        axis
+        side
+        (float placement.BodyDimensions.ClosingAxisExtent)
+        (float placement.BodyDimensions.CrossAxisExtent)
+        (float placement.BodyDimensions.Thickness)
+        (float placement.ApertureFaceMidpoint.X)
+        (float placement.ApertureFaceMidpoint.Y)
+        (float placement.ApertureFaceMidpoint.Z)
+        placement.ApertureFaceAngleRadians
+
+/// Translates calculated domain jaw placements into JSCAD solids.
+let createJaws placements =
+    placements |> List.map createJaw |> List.toArray
+
+/// Downloads all supplied JSCAD solids together as one binary STL file.
 let downloadStl fileName geometry = downloadJscadStl fileName geometry

@@ -11,7 +11,7 @@
         <None Include="paket.references" />
         <None Include="BeamHeadJscad.js" />
         <Compile Include="JscadGeometry.fs" />
-        <Compile Include="CubeViewer.fs" />
+        <Compile Include="GeometryViewer.fs" />
         <Compile Include="Index.fs" />
         <Compile Include="App.fs" />
         <None Include="vite.config.mts" />
