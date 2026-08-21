@@ -8,6 +8,6 @@ module ProofCubeTests =
     let ``proof cube is 100 millimetres on every axis`` () =
         let dimensions = ProofCube.dimensions
 
-        Assert.Equal(100.0, dimensions.Width)
-        Assert.Equal(100.0, dimensions.Depth)
-        Assert.Equal(100.0, dimensions.Height)
+        Assert.Equal(100.0<mm>, dimensions.Width)
+        Assert.Equal(100.0<mm>, dimensions.Depth)
+        Assert.Equal(100.0<mm>, dimensions.Height)

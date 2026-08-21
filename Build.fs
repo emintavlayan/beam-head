@@ -7,13 +7,10 @@ open Helpers
 
 initializeContext ()
 
-let sharedPath = Path.getFullName "src/Shared"
 let serverPath = Path.getFullName "src/Server"
 let clientPath = Path.getFullName "src/Client"
 let deployPath = Path.getFullName "deploy"
-let sharedTestsPath = Path.getFullName "tests/Shared"
-let serverTestsPath = Path.getFullName "tests/Server"
-let clientTestsPath = Path.getFullName "tests/Client"
+let domainTestsPath = Path.getFullName "tests/Domain"
 
 Target.create "Clean" (fun _ ->
     Shell.cleanDir deployPath
@@ -31,7 +28,7 @@ Target.create "Bundle" (fun _ ->
 
 Target.create "Azure" (fun _ ->
     let web = webApp {
-        name "SAFE-App"
+        name "beam-head"
         operating_system OS.Linux
         runtime_stack (DotNet "8.0")
         zip_deploy "deploy"
@@ -42,12 +39,11 @@ Target.create "Azure" (fun _ ->
         add_resource web
     }
 
-    deployment |> Deploy.execute "SAFE-App" Deploy.NoParameters |> ignore)
+    deployment |> Deploy.execute "BeamHead" Deploy.NoParameters |> ignore)
 
-Target.create "Build" (fun _ ->
-    run dotnet [ "build"; "Application.sln" ] "."
+Target.create "Build" (fun _ -> run dotnet [ "build"; "BeamHead.sln" ] "."
 
-    )
+)
 
 Target.create "Run" (fun _ ->
     [
@@ -56,18 +52,10 @@ Target.create "Run" (fun _ ->
     ]
     |> runParallel)
 
-Target.create "RunTestsHeadless" (fun _ ->
-    run dotnet [ "run" ] serverTestsPath
-    run npm [ "install" ] clientTestsPath
-    run dotnet [ "fable"; "-o"; "output" ] clientTestsPath
-    run npx [ "mocha"; "output" ] clientTestsPath
-)
+Target.create "RunTestsHeadless" (fun _ -> run dotnet [ "test" ] domainTestsPath)
 
 Target.create "WatchRunTests" (fun _ ->
-    [
-        "server", dotnet [ "watch"; "run"; "--no-restore" ] serverTestsPath
-        "client", dotnet [ "fable"; "watch"; "-o"; "output"; "-s"; "--run"; "npx"; "vite" ] clientTestsPath
-    ]
+    [ "domain", dotnet [ "watch"; "test"; "--no-restore" ] domainTestsPath ]
     |> runParallel)
 
 Target.create "Format" (fun _ -> run dotnet [ "fantomas"; "." ] ".")

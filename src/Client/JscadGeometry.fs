@@ -11,7 +11,7 @@ let private downloadJscadStl (fileName: string) (geometry: obj) : unit = jsNativ
 
 /// Translates technology-independent cuboid dimensions into JSCAD geometry.
 let createCuboid (dimensions: CuboidDimensions) =
-    createJscadCuboid dimensions.Width dimensions.Depth dimensions.Height
+    createJscadCuboid (float dimensions.Width) (float dimensions.Depth) (float dimensions.Height)
 
 /// Downloads a JSCAD geometry as a binary STL file.
 let downloadStl fileName geometry = downloadJscadStl fileName geometry

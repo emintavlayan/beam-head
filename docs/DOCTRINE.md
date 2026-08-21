@@ -68,6 +68,15 @@ Keep domain logic out of views and update functions.
 
 Geometry definitions represent physical machine geometry and should remain independent of rendering technology.
 
+Define millimetres as an F# unit of measure:
+
+```fsharp
+[<Measure>]
+type mm
+```
+
+All physical geometry dimensions and positions in the domain must use `float<mm>`. Do not scatter raw `float` values for physical lengths. Remove the unit and convert to a plain numeric value only at an external boundary such as JSCAD/JavaScript interop or serialization.
+
 JSCAD v2 is the current CAD and visualisation technology.
 
 Translation from BeamHead domain geometry to JSCAD belongs at the application/infrastructure boundary.

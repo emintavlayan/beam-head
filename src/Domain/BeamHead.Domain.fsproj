@@ -4,11 +4,8 @@
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="paket.references" />
-    <Compile Include="Shared.Tests.fs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\Shared\Shared.fsproj" />
+    <Compile Include="Geometry.fs" />
+    <Content Include="paket.references" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
