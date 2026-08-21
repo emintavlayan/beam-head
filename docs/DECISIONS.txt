@@ -262,3 +262,8 @@ Evidence used for today's jaw decisions
 
   - Current modelling rule:
     - When public sources give motion/placement information but not the complete vendor CAD body, keep the known placement physics exact and keep unsupported outer-body detail explicitly approximate.
+
+
+14:24 - Refined the simplified TrueBeam jaw-body dimensions
+  - Stronger public evidence supports the 78 mm thickness, X midplane at 406 mm, Y upstream trajectory radius at 280 mm and Y midpoint radius at 319 mm.
+  - The 200 mm cross-axis extent and 80 mm closing-axis extent remain explicit modelling approximations because exact public TrueBeam outer jaw dimensions were not found.

@@ -30,12 +30,17 @@ module TrueBeamGeometry =
     /// The fixed aperture-face-midpoint Z reference for each X jaw.
     let xJawReferenceZ = 406.0<mm>
 
-    /// The aperture-face-midpoint trajectory radius for each Y jaw.
-    let yJawReferenceRadius = 280.0<mm> + jawThickness / 2.0
+    /// The supported upstream-face trajectory radius for each Y jaw.
+    let yJawUpstreamTrajectoryRadius = 280.0<mm>
 
-    /// A simplified, non-vendor-exact jaw-body extent used in both transverse directions.
-    /// This affects only the outer rectangular body and can be replaced without changing jaw placement.
-    let simplifiedJawOuterBodyExtent = 200.0<mm>
+    /// The aperture-face-midpoint trajectory radius for each Y jaw.
+    let yJawReferenceRadius = yJawUpstreamTrajectoryRadius + jawThickness / 2.0
+
+    /// A simplified, non-vendor-exact jaw-body extent perpendicular to jaw motion.
+    let simplifiedJawCrossAxisExtent = 200.0<mm>
+
+    /// A simplified, non-vendor-exact jaw-body extent along the jaw closing axis.
+    let simplifiedJawClosingAxisExtent = 80.0<mm>
 
 /// Provides the static 400 x 400 mm TrueBeam jaw geometry.
 [<RequireQualifiedAccess>]
@@ -52,8 +57,8 @@ module TrueBeamJaws =
     }
 
     let private bodyDimensions = {
-        ClosingAxisExtent = TrueBeamGeometry.simplifiedJawOuterBodyExtent
-        CrossAxisExtent = TrueBeamGeometry.simplifiedJawOuterBodyExtent
+        ClosingAxisExtent = TrueBeamGeometry.simplifiedJawClosingAxisExtent
+        CrossAxisExtent = TrueBeamGeometry.simplifiedJawCrossAxisExtent
         Thickness = TrueBeamGeometry.jawThickness
     }
 

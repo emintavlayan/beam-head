@@ -37,10 +37,33 @@ module TrueBeamJawTests =
         |> List.iter (fun placement -> Assert.Equal(78.0<mm>, placement.BodyDimensions.Thickness))
 
     [<Fact>]
+    let ``simplified jaw cross axis extent is exactly 200 millimetres`` () =
+        Assert.Equal(200.0<mm>, TrueBeamGeometry.simplifiedJawCrossAxisExtent)
+
+        TrueBeamJaws.placements
+        |> List.iter (fun placement -> Assert.Equal(200.0<mm>, placement.BodyDimensions.CrossAxisExtent))
+
+    [<Fact>]
+    let ``simplified jaw closing axis extent is exactly 80 millimetres`` () =
+        Assert.Equal(80.0<mm>, TrueBeamGeometry.simplifiedJawClosingAxisExtent)
+
+        TrueBeamJaws.placements
+        |> List.iter (fun placement -> Assert.Equal(80.0<mm>, placement.BodyDimensions.ClosingAxisExtent))
+
+    [<Fact>]
     let ``X jaw reference Z is exactly 406 millimetres`` () =
         Assert.Equal(406.0<mm>, TrueBeamGeometry.xJawReferenceZ)
         Assert.Equal(406.0<mm>, (placement X Negative).ApertureFaceMidpoint.Z)
         Assert.Equal(406.0<mm>, (placement X Positive).ApertureFaceMidpoint.Z)
+
+    [<Fact>]
+    let ``X jaw midplane and half thickness give supported upstream and downstream surfaces`` () =
+        let halfThickness = TrueBeamGeometry.jawThickness / 2.0
+        let upstreamSurface = TrueBeamGeometry.xJawReferenceZ - halfThickness
+        let downstreamSurface = TrueBeamGeometry.xJawReferenceZ + halfThickness
+
+        assertClose 367.0<mm> upstreamSurface
+        assertClose 445.0<mm> downstreamSurface
 
     [<Fact>]
     let ``Y jaw aperture face midpoint radius is exactly 319 millimetres`` () =
@@ -50,6 +73,14 @@ module TrueBeamJawTests =
             let point = (placement Y side).ApertureFaceMidpoint
             let radius = sqrt (point.Y * point.Y + point.Z * point.Z)
             assertClose 319.0<mm> radius
+
+    [<Fact>]
+    let ``Y jaw midpoint radius and half thickness give supported upstream trajectory radius`` () =
+        let upstreamTrajectoryRadius =
+            TrueBeamGeometry.yJawReferenceRadius - TrueBeamGeometry.jawThickness / 2.0
+
+        Assert.Equal(280.0<mm>, TrueBeamGeometry.yJawUpstreamTrajectoryRadius)
+        assertClose 280.0<mm> upstreamTrajectoryRadius
 
     [<Fact>]
     let ``positive and negative jaw placements are symmetric`` () =
