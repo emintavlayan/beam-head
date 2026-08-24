@@ -322,3 +322,10 @@ Evidence used for today's jaw decisions
   - The JSCAD viewer mirrors Z only for display so the source appears above isocentre and standard JSCAD axes/grid remain natural.
   - Returned to the standard JSCAD grid, axes and orbit behaviour instead of maintaining a custom grid renderer.
   - STL export is never mirrored.
+
+10:54 - Completed the first usable TrueBeam jaw viewer
+  - Four static TrueBeam jaws are now rendered from the tested F# geometry.
+  - Viewer uses the standard JSCAD grid, axes and orbit controls.
+  - The viewer mirrors Z only for natural display while STL keeps the real TOPAS/isocentre coordinates.
+  - Initial framing shows the complete jaw geometry without changing the isocentre orbit origin.
+  - Viewer work is considered good enough for now; next priority is adding the simplified retracted MLC.

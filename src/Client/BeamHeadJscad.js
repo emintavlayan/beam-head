@@ -9,10 +9,12 @@ const { cameras, controls, drawCommands, entitiesFromSolids, prepareRender } = r
 const { serialize } = stlSerializer;
 
 const sceneGuides = {
-    gridSize: [500, 500],
-    gridTicks: [25, 5],
+    gridSize: [200, 200],
+    gridTicks: [10, 1],
     axisSize: 300,
 };
+
+const initialCameraDistanceScale = 2.25;
 
 export function createJaw(
     axis,
@@ -70,6 +72,9 @@ export function startViewer(container, geometry) {
     const orbitControls = controls.orbit;
     const camera = {
         ...perspectiveCamera.defaults,
+        position: perspectiveCamera.defaults.position.map(
+            coordinate => coordinate * initialCameraDistanceScale,
+        ),
         target: [0, 0, 0],
     };
     let controlState = { ...orbitControls.defaults };
@@ -103,7 +108,14 @@ export function startViewer(container, geometry) {
         },
         entities: [
             {
-                visuals: { drawCmd: "drawGrid", show: true },
+                visuals: {
+                    drawCmd: "drawGrid",
+                    show: true,
+                    color: [0, 0, 0, 1],
+                    subColor: [0, 0, 1, 0.5],
+                    fadeOut: false,
+                    transparent: true,
+                },
                 size: sceneGuides.gridSize,
                 ticks: sceneGuides.gridTicks,
             },
