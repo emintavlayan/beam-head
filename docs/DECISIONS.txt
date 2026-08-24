@@ -268,8 +268,51 @@ Evidence used for today's jaw decisions
   - Stronger public evidence supports the 78 mm thickness, X midplane at 406 mm, Y upstream trajectory radius at 280 mm and Y midpoint radius at 319 mm.
   - The 200 mm cross-axis extent and 80 mm closing-axis extent remain explicit modelling approximations because exact public TrueBeam outer jaw dimensions were not found.
 
+2026-08-24
 
-08:42 - Introduced an explicit isocentre geometry frame
+08:30 - Realised the viewer should follow the clinical isocentre convention
+  - The source-origin geometry was mathematically correct but did not feel natural when rotating the 3D model.
+  - Moving only the camera and grid did not completely solve this because the model was still orbiting around a coordinate system centred at the source.
+  - For a medical physicist the natural 3D reference is isocentre.
+  - We do not change the physical construction mathematics just to fix the viewer.
+
+08:36 - Kept BEV consistent with normal TPS and medical-physics terminology
+  - BEV means beam's-eye view.
+  - The view is from the source looking downstream along the beam axis toward isocentre.
+  - We will not invent a different BeamHead meaning for BEV.
+  - A future viewer can offer BEV together with the normal free 3D view.
+
+08:39 - Chose aperture-face edges as a future visual focusing check
+  - Jaw bodies can later be shown transparent or with strong wireframe edges in BEV.
+  - From the source view, correctly focused aperture-face edges should visually overlap along the beam direction.
+  - This gives a simple visual sanity check of the jaw focusing.
+  - It is only a rendering aid and does not change the jaw geometry or STL.
+
+08:42 - Introduced explicit SourceFrame and IsocentreFrame coordinates
   - Construction uses SourceFrame because machine geometry is naturally defined from the source.
-  - The viewer and STL use IsocentreFrame because isocentre-origin coordinates match normal medical-physics and TPS convention.
-  - The transformation is only Z_isocentre = Z_source - 1000 mm and does not alter physical geometry.
+  - SourceFrame:
+    - source Z = 0 mm
+    - isocentre Z = +1000 mm
+    - +Z is downstream toward the patient
+  - Viewer and STL use IsocentreFrame because isocentre-origin coordinates match normal medical-physics and TPS convention.
+  - IsocentreFrame:
+    - source Z = -1000 mm
+    - isocentre Z = 0 mm
+    - +Z remains downstream toward the patient
+  - The conversion is only:
+    - X unchanged
+    - Y unchanged
+    - Z_isocentre = Z_source - 1000 mm
+  - Example:
+    - X jaw 406 mm from source becomes Z = -594 mm
+    - Y jaw Z 312.605 mm from source becomes approximately Z = -687.395 mm
+  - The transformation is explicit in F#, not hidden in JSCAD.
+  - This supersedes the earlier 12:30 decision that all final geometry would remain in one source-origin coordinate frame.
+
+08:46 - Decided that viewer and STL must use the same transformed geometry
+  - What we inspect visually should be what we export.
+  - Jaw geometry is first calculated in SourceFrame.
+  - It is then transformed once into IsocentreFrame.
+  - The same transformed geometry is passed to the 3D viewer and STL exporter.
+  - The isocentre grid and 3D orbit target are therefore naturally at Z = 0.
+  - No physical jaw dimensions, positions or focusing angles are changed by this translation.
