@@ -329,3 +329,41 @@ Evidence used for today's jaw decisions
   - The viewer mirrors Z only for natural display while STL keeps the real TOPAS/isocentre coordinates.
   - Initial framing shows the complete jaw geometry without changing the isocentre orbit origin.
   - Viewer work is considered good enough for now; next priority is adding the simplified retracted MLC.
+
+11:08 - Scaled the standard JSCAD grid to BeamHead dimensions
+  - BeamHead geometry is expressed in millimetres, so the standard 200 x 200 JSCAD grid looks too small beside the treatment head.
+  - Keep the normal JSCAD drawGrid implementation and styling.
+  - Scale the grid only; do not create a custom grid renderer.
+  - Use a 1000 x 1000 mm grid with 50 mm and 5 mm ticks so the visual density stays similar to normal JSCAD.
+
+11:12 - Rechecked the retracted Millennium 120 position against the existing TOPAS model
+  - Existing TOPAS beamlines place the MLC reference at Z = -49.1 cm in isocentre coordinates.
+  - With the source at Z = -100 cm this gives a source-to-MLC reference distance of 50.9 cm.
+  - Existing MLC banks are positioned at X = +/-10.36324 cm at this plane.
+  - Projected to isocentre this is exactly +/-20.36 cm.
+  - The retracted MLC tip is therefore 3.6 mm outside the +/-20.0 cm jaw setting at isocentre.
+  - Keep these values in BeamHead so new geometry matches the TSEBT simulations already in use.
+
+11:15 - Fixed the simplified Millennium 120 model for the current TSEBT geometry
+  - Published Millennium 120 geometry supports a 67 mm beam-axis thickness, 80 mm rounded leaf-tip radius and 11.3 degree outer tip geometry.
+  - With our 50.9 cm MLC midplane and 67 mm thickness, the upstream surface is 47.55 cm from source.
+  - This is consistent with Lloyd describing the Millennium MLC as about 47 cm from source.
+  - Use the centre of the beam-facing rounded face at the MLC midplane as the bank reference point.
+  - Current TSEBT simulations always use the MLC fully retracted.
+  - Model the MLC as two continuous solid bank envelopes rather than 120 individual leaves.
+  - Preserve the rounded beam-facing scattering surface reconstructed in the Excel profile.
+  - Rear bank length, smooth outer blending, omission of individual leaves and omission of tongue-and-groove are explicit modelling approximations.
+  - This is acceptable for the current retracted configuration because the beam-facing leaf-end surface and nearby tungsten are the important MLC geometry for electron scatter.
+  - If BeamHead later supports MLC-shaped fields, replace this approximation with detailed individual leaf geometry.
+  - Evidence used:
+    - Hariri et al. for the 8 cm rounded tip and 11.3 degree outer geometry.
+    - Bergman et al. for Millennium 120 thickness and tip parameters.
+    - Lloyd for TrueBeam Millennium geometry, approximate location and retracted electron operation.
+    - Kaluarachchi et al. for the importance of MLC leaf-end and leaf-side scattering in TrueBeam electron Monte Carlo.
+
+11:25 - Scaled the standard JSCAD grid to BeamHead dimensions
+  - BeamHead geometry is expressed in millimetres and spans several hundred millimetres.
+  - The standard 200 x 200 JSCAD grid was too small beside the treatment-head geometry.
+  - Kept the normal JSCAD drawGrid implementation and styling.
+  - Increased the grid to 1000 x 1000 mm with 50 mm and 5 mm ticks.
+  - No geometry, coordinate or STL behaviour changed.

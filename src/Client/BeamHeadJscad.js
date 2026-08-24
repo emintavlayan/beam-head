@@ -9,8 +9,8 @@ const { cameras, controls, drawCommands, entitiesFromSolids, prepareRender } = r
 const { serialize } = stlSerializer;
 
 const sceneGuides = {
-    gridSize: [200, 200],
-    gridTicks: [10, 1],
+    gridSize: [1000, 1000],
+    gridTicks: [50, 5],
     axisSize: 300,
 };
 
