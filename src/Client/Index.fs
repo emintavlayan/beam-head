@@ -15,10 +15,13 @@ let init () = ()
 /// Applies a client message to the current model.
 let update (_: Msg) (model: Model) = model
 
-let private trueBeamJaws =
+let private trueBeamJawsForExport =
     TrueBeamJaws.placements
     |> List.map IsocentreFrame.fromSourceJawPlacement
     |> JscadGeometry.createJaws
+
+let private trueBeamJawsForViewer =
+    JscadGeometry.createViewerDisplay trueBeamJawsForExport
 
 let private staticFieldSize (label: string) =
     Html.label [
@@ -77,7 +80,8 @@ let private controlsCard =
 
                     Html.button [
                         prop.className "btn btn-primary mt-1 w-full"
-                        prop.onClick (fun _ -> JscadGeometry.downloadStl "truebeam-jaws-400x400mm.stl" trueBeamJaws)
+                        prop.onClick (fun _ ->
+                            JscadGeometry.downloadStl "truebeam-jaws-400x400mm.stl" trueBeamJawsForExport)
                         prop.text "Export four-jaw STL"
                     ]
                 ]
@@ -99,7 +103,10 @@ let private viewerCard =
                     ]
                 ]
             ]
-            Html.div [ prop.className "p-3"; prop.children [ GeometryViewer.View trueBeamJaws ] ]
+            Html.div [
+                prop.className "p-3"
+                prop.children [ GeometryViewer.View trueBeamJawsForViewer ]
+            ]
         ]
     ]
 

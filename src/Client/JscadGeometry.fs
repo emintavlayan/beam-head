@@ -20,6 +20,9 @@ let private createJscadJaw
 [<Import("downloadStl", "./BeamHeadJscad.js")>]
 let private downloadJscadStl (fileName: string) (geometry: obj array) : unit = jsNative
 
+[<Import("createViewerDisplay", "./BeamHeadJscad.js")>]
+let private createJscadViewerDisplay (geometry: obj array) : obj array = jsNative
+
 /// Translates a calculated domain jaw placement into a JSCAD solid.
 let createJaw (placement: IsocentreFrameJawPlacement) =
     let axis =
@@ -46,6 +49,9 @@ let createJaw (placement: IsocentreFrameJawPlacement) =
 /// Translates calculated isocentre-frame jaw placements into JSCAD solids.
 let createJaws (placements: IsocentreFrameJawPlacement list) =
     placements |> List.map createJaw |> List.toArray
+
+/// Mirrors JSCAD solids in Z for viewer display without changing export geometry.
+let createViewerDisplay geometry = createJscadViewerDisplay geometry
 
 /// Downloads all supplied JSCAD solids together as one binary STL file.
 let downloadStl fileName geometry = downloadJscadStl fileName geometry

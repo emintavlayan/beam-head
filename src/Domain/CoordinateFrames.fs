@@ -41,3 +41,13 @@ module IsocentreFrame =
 
     /// The source/target CAX point in the isocentre frame.
     let source = fromSourcePoint SourceFrame.source
+
+/// Provides the non-physical orientation transform used only by the 3D preview.
+[<RequireQualifiedAccess>]
+module ViewerDisplay =
+    /// Mirrors an isocentre-frame point in Z for natural JSCAD presentation.
+    let fromIsocentrePoint (point: IsocentreFramePoint) : ViewerDisplayPoint = {
+        X = point.X
+        Y = point.Y
+        Z = -point.Z
+    }

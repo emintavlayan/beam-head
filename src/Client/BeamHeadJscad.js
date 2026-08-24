@@ -4,67 +4,14 @@ import stlSerializer from "@jscad/stl-serializer";
 
 const { primitives } = modeling;
 const { colorize } = modeling.colors;
-const { rotateX, rotateY, translate } = modeling.transforms;
+const { mirrorZ, rotateX, rotateY, translate } = modeling.transforms;
 const { cameras, controls, drawCommands, entitiesFromSolids, prepareRender } = renderer;
 const { serialize } = stlSerializer;
 
 const sceneGuides = {
-    isocentreGridSize: [500, 500],
-    isocentreGridTick: 50,
-    isocentreZ: 0,
-    axisSize: 500,
-};
-
-const createIsocentreGridDrawCommand = (regl, params) => {
-    const [width, depth] = params.size;
-    const halfWidth = width / 2;
-    const halfDepth = depth / 2;
-    const positions = [];
-
-    for (let x = -halfWidth; x <= halfWidth; x += params.tick) {
-        positions.push(x, -halfDepth, params.z, x, halfDepth, params.z);
-    }
-
-    for (let y = -halfDepth; y <= halfDepth; y += params.tick) {
-        positions.push(-halfWidth, y, params.z, halfWidth, y, params.z);
-    }
-
-    return regl({
-        vert: `
-            precision mediump float;
-            attribute vec3 position;
-            uniform mat4 view, projection;
-            void main() {
-                gl_Position = projection * view * vec4(position, 1.0);
-            }
-        `,
-        frag: `
-            precision mediump float;
-            uniform vec4 color;
-            void main() {
-                gl_FragColor = color;
-            }
-        `,
-        attributes: {
-            position: positions,
-        },
-        uniforms: {
-            color: (context, props) => props.color,
-        },
-        count: positions.length / 3,
-        primitive: "lines",
-        lineWidth: 1,
-        depth: {
-            enable: true,
-        },
-        blend: {
-            enable: true,
-            func: {
-                src: "src alpha",
-                dst: "one minus src alpha",
-            },
-        },
-    });
+    gridSize: [500, 500],
+    gridTicks: [25, 5],
+    axisSize: 300,
 };
 
 export function createJaw(
@@ -114,14 +61,16 @@ export function downloadStl(fileName, geometries) {
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
+export function createViewerDisplay(geometries) {
+    return mirrorZ(...geometries);
+}
+
 export function startViewer(container, geometry) {
     const perspectiveCamera = cameras.perspective;
     const orbitControls = controls.orbit;
     const camera = {
         ...perspectiveCamera.defaults,
-        position: [800, 1200, 1200],
         target: [0, 0, 0],
-        up: [0, 1, 0],
     };
     let controlState = { ...orbitControls.defaults };
     let updateView = true;
@@ -149,20 +98,14 @@ export function startViewer(container, geometry) {
         camera,
         drawCommands: {
             drawAxis: drawCommands.drawAxis,
-            drawIsocentreGrid: createIsocentreGridDrawCommand,
+            drawGrid: drawCommands.drawGrid,
             drawMesh: drawCommands.drawMesh,
         },
         entities: [
             {
-                visuals: {
-                    drawCmd: "drawIsocentreGrid",
-                    show: true,
-                    transparent: true,
-                    color: [0.32, 0.42, 0.52, 0.45],
-                },
-                size: sceneGuides.isocentreGridSize,
-                tick: sceneGuides.isocentreGridTick,
-                z: sceneGuides.isocentreZ,
+                visuals: { drawCmd: "drawGrid", show: true },
+                size: sceneGuides.gridSize,
+                ticks: sceneGuides.gridTicks,
             },
             {
                 visuals: { drawCmd: "drawAxis", show: true },

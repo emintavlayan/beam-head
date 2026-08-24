@@ -45,6 +45,20 @@ module TrueBeamJawTests =
         Assert.Equal(sourcePoint.Y, transformed.Y)
 
     [<Fact>]
+    let ``viewer display mirrors Z without changing X or Y`` () =
+        let realPoint: IsocentreFramePoint = {
+            X = 82.091<mm>
+            Y = -12.5<mm>
+            Z = -594.0<mm>
+        }
+
+        let displayPoint = ViewerDisplay.fromIsocentrePoint realPoint
+
+        Assert.Equal(realPoint.X, displayPoint.X)
+        Assert.Equal(realPoint.Y, displayPoint.Y)
+        Assert.Equal(594.0<mm>, displayPoint.Z)
+
+    [<Fact>]
     let ``fixed field edges are plus and minus 200 millimetres at isocentre`` () =
         Assert.Equal(200.0<mm>, TrueBeamGeometry.positiveFieldEdgeAtIsocentre)
         Assert.Equal(-200.0<mm>, TrueBeamGeometry.negativeFieldEdgeAtIsocentre)

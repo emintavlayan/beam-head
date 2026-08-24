@@ -18,6 +18,13 @@ type IsocentreFramePoint = {
     Z: float<mm>
 }
 
+/// Represents an isocentre-frame point after applying the viewer-only display orientation.
+type ViewerDisplayPoint = {
+    X: float<mm>
+    Y: float<mm>
+    Z: float<mm>
+}
+
 /// Identifies the axis along which a jaw closes.
 type JawAxis =
     | X
