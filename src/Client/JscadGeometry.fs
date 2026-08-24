@@ -20,7 +20,7 @@ let private createJscadJaw
 [<Import("createMlcBank", "./BeamHeadJscad.js")>]
 let private createJscadMlcBank
     (side: string)
-    (crossLeafWidth: float)
+    (bankSpan: float)
     (referenceX: float)
     (referenceY: float)
     (referenceZ: float)
@@ -75,7 +75,7 @@ let createMlcBank (placement: IsocentreFrameMlcBankPlacement) =
 
     createJscadMlcBank
         side
-        (float placement.CrossLeafWidth)
+        (float placement.BankSpan)
         (float placement.TipReference.X)
         (float placement.TipReference.Y)
         (float placement.TipReference.Z)

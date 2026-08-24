@@ -52,7 +52,7 @@ export function createJaw(
 
 export function createMlcBank(
     side,
-    crossLeafWidth,
+    bankSpan,
     referenceX,
     referenceY,
     referenceZ,
@@ -63,8 +63,8 @@ export function createMlcBank(
         orientation: "clockwise",
     });
 
-    let bank = extrudeLinear({ height: crossLeafWidth }, bankProfile);
-    bank = translate([0, 0, -crossLeafWidth / 2], bank);
+    let bank = extrudeLinear({ height: bankSpan }, bankProfile);
+    bank = translate([0, 0, -bankSpan / 2], bank);
     bank = rotateX(Math.PI / 2, bank);
 
     if (side === "negative") {

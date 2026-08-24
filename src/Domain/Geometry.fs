@@ -79,7 +79,7 @@ type SourceFrameMlcBankPlacement = {
     Side: MlcBankSide
     TipReference: SourceFramePoint
     LocalProfile: MlcProfilePoint list
-    CrossLeafWidth: float<mm>
+    BankSpan: float<mm>
 }
 
 /// Describes an isocentre-frame MLC bank for presentation and export.
@@ -87,7 +87,7 @@ type IsocentreFrameMlcBankPlacement = {
     Side: MlcBankSide
     TipReference: IsocentreFramePoint
     LocalProfile: MlcProfilePoint list
-    CrossLeafWidth: float<mm>
+    BankSpan: float<mm>
 }
 
 /// Provides calculations for divergent aperture lines.

@@ -41,7 +41,7 @@ module IsocentreFrame =
         Side = placement.Side
         TipReference = fromSourcePoint placement.TipReference
         LocalProfile = placement.LocalProfile
-        CrossLeafWidth = placement.CrossLeafWidth
+        BankSpan = placement.BankSpan
     }
 
     /// The isocentre origin in the isocentre frame.

@@ -4,7 +4,13 @@ namespace BeamHead.Domain
 [<RequireQualifiedAccess>]
 module TrueBeamMlc =
     /// The MLC reference midplane distance downstream from the source.
-    let midplaneZ = 509.0<mm>
+    let mlcMidplaneZ = 509.0<mm>
+
+    /// The fully retracted positive tip setting projected at isocentre.
+    let retractedTipAtIsocentre = 203.6<mm>
+
+    /// The total Millennium bank span perpendicular to leaf travel, projected at isocentre.
+    let projectedBankSpanAtIsocentre = 400.0<mm>
 
     /// The supported physical MLC thickness along the beam axis.
     let thickness = 67.0<mm>
@@ -18,23 +24,36 @@ module TrueBeamMlc =
     /// The published approximate outer tip angle in degrees.
     let outerTipAngleDegrees = 11.3
 
-    /// The positive-bank tip reference position at the MLC midplane.
-    let positiveTipReferenceX = 103.6324<mm>
+    /// Projects an isocentre-plane coordinate back to a source-origin plane.
+    let projectFromIsocentreToPlane (projectedCoordinate: float<mm>) (planeZ: float<mm>) =
+        projectedCoordinate * planeZ / TrueBeamGeometry.isocentreZ
 
-    /// The negative-bank tip reference position at the MLC midplane.
-    let negativeTipReferenceX = -positiveTipReferenceX
+    /// Projects a physical coordinate at a source-origin plane forward to isocentre.
+    let projectFromPlaneToIsocentre (coordinate: float<mm>) (planeZ: float<mm>) =
+        coordinate * TrueBeamGeometry.isocentreZ / planeZ
 
-    /// A non-vendor-exact rear extent of the simplified continuous bank profile.
-    let simplifiedRearExtent = 106.89<mm>
+    /// The derived positive-bank tip reference coordinate at the physical MLC plane.
+    let tipReferenceXAtMlcPlane =
+        projectFromIsocentreToPlane retractedTipAtIsocentre mlcMidplaneZ
 
-    /// A constant, non-vendor-exact cross-leaf extrusion replacing individual leaves and gaps.
-    let simplifiedCrossLeafWidth = 203.6<mm>
+    /// The derived physical span of the simplified bank envelope at the MLC plane.
+    let bankSpanAtMlcPlane =
+        projectFromIsocentreToPlane projectedBankSpanAtIsocentre mlcMidplaneZ
+
+    /// A modelling approximation from the reconstructed Excel closure, providing tungsten behind the scattering face rather than a vendor leaf length.
+    let simplifiedBodyDepthBehindTip = 106.89<mm>
 
     /// The reconstructed local X-Z scattering-face profile, from tip into the positive bank body.
     let localProfile = [
-        { X = 106.89<mm>; Z = 33.5<mm> }
-        { X = 106.89<mm>; Z = -33.5<mm> }
-        { X = 9.18152<mm>; Z = -33.5<mm> }
+        {
+            X = simplifiedBodyDepthBehindTip
+            Z = halfThickness
+        }
+        {
+            X = simplifiedBodyDepthBehindTip
+            Z = -halfThickness
+        }
+        { X = 9.18152<mm>; Z = -halfThickness }
         { X = 8.36303<mm>; Z = -33.41531<mm> }
         { X = 7.56497<mm>; Z = -33.16338<mm> }
         { X = 6.80694<mm>; Z = -32.75286<mm> }
@@ -62,7 +81,7 @@ module TrueBeamMlc =
         { X = 6.80694<mm>; Z = 32.75286<mm> }
         { X = 7.56497<mm>; Z = 33.16338<mm> }
         { X = 8.36303<mm>; Z = 33.41531<mm> }
-        { X = 9.18152<mm>; Z = 33.5<mm> }
+        { X = 9.18152<mm>; Z = halfThickness }
     ]
 
     let private placement side tipReferenceX : SourceFrameMlcBankPlacement = {
@@ -70,18 +89,14 @@ module TrueBeamMlc =
         TipReference = {
             X = tipReferenceX
             Y = 0.0<mm>
-            Z = midplaneZ
+            Z = mlcMidplaneZ
         }
         LocalProfile = localProfile
-        CrossLeafWidth = simplifiedCrossLeafWidth
+        BankSpan = bankSpanAtMlcPlane
     }
-
-    /// Projects a transverse coordinate at the MLC midplane along a source-origin ray to isocentre.
-    let projectTipCoordinateToIsocentre (tipCoordinate: float<mm>) =
-        tipCoordinate * TrueBeamGeometry.isocentreZ / midplaneZ
 
     /// The final source-frame placements of the opposing, fully retracted MLC bank envelopes.
     let placements = [
-        placement NegativeBank negativeTipReferenceX
-        placement PositiveBank positiveTipReferenceX
+        placement NegativeBank -tipReferenceXAtMlcPlane
+        placement PositiveBank tipReferenceXAtMlcPlane
     ]

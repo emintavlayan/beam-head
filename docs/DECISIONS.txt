@@ -384,3 +384,12 @@ Evidence used for today's jaw decisions
     - Lloyd, PhD thesis 2017 - Millennium 120 location, rounded/divergent geometry and retracted electron operation.
     - Kaluarachchi et al., Medical Physics 2020 - importance of MLC leaf-end/side scattering for electron Monte Carlo.
     - Existing TSEBT TOPAS inputs - MLC Z = -49.1 cm and bank X = +/-10.36324 cm.
+
+13:18 - Removed hardcoded derived MLC geometry values
+  - The retracted MLC setting is defined at isocentre as +/-203.6 mm.
+  - The physical tip position at the 509 mm MLC plane is derived by source projection and equals +/-103.6324 mm.
+  - The Millennium bank span is defined as 400 mm projected at isocentre.
+  - The simplified physical bank span at the 509 mm MLC plane is independently derived as 203.6 mm.
+  - These two 203.6 mm values describe different quantities and are kept separate even though they are numerically equal.
+  - The 106.89 mm rear body depth remains an explicit modelling approximation used only to close the reconstructed bank behind the scattering face.
+  - Rule: supported machine inputs are stored; dependent physical coordinates are calculated.
