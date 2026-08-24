@@ -20,6 +20,31 @@ module TrueBeamJawTests =
         Assert.Equal(1000.0<mm>, TrueBeamGeometry.isocentreZ)
 
     [<Fact>]
+    let ``source transforms to minus 1000 millimetres in isocentre frame`` () =
+        let source = IsocentreFrame.fromSourcePoint SourceFrame.source
+
+        Assert.Equal(-1000.0<mm>, source.Z)
+
+    [<Fact>]
+    let ``isocentre transforms to zero in isocentre frame`` () =
+        let isocentre = IsocentreFrame.fromSourcePoint SourceFrame.isocentre
+
+        Assert.Equal(0.0<mm>, isocentre.Z)
+
+    [<Fact>]
+    let ``frame transformation leaves X and Y coordinates unchanged`` () =
+        let sourcePoint: SourceFramePoint = {
+            X = 123.0<mm>
+            Y = -456.0<mm>
+            Z = 789.0<mm>
+        }
+
+        let transformed = IsocentreFrame.fromSourcePoint sourcePoint
+
+        Assert.Equal(sourcePoint.X, transformed.X)
+        Assert.Equal(sourcePoint.Y, transformed.Y)
+
+    [<Fact>]
     let ``fixed field edges are plus and minus 200 millimetres at isocentre`` () =
         Assert.Equal(200.0<mm>, TrueBeamGeometry.positiveFieldEdgeAtIsocentre)
         Assert.Equal(-200.0<mm>, TrueBeamGeometry.negativeFieldEdgeAtIsocentre)
@@ -57,6 +82,12 @@ module TrueBeamJawTests =
         Assert.Equal(406.0<mm>, (placement X Positive).ApertureFaceMidpoint.Z)
 
     [<Fact>]
+    let ``X jaw reference transforms to minus 594 millimetres`` () =
+        let transformed = placement X Positive |> IsocentreFrame.fromSourceJawPlacement
+
+        Assert.Equal(-594.0<mm>, transformed.ApertureFaceMidpoint.Z)
+
+    [<Fact>]
     let ``X jaw midplane and half thickness give supported upstream and downstream surfaces`` () =
         let halfThickness = TrueBeamGeometry.jawThickness / 2.0
         let upstreamSurface = TrueBeamGeometry.xJawReferenceZ - halfThickness
@@ -81,6 +112,25 @@ module TrueBeamJawTests =
 
         Assert.Equal(280.0<mm>, TrueBeamGeometry.yJawUpstreamTrajectoryRadius)
         assertClose 280.0<mm> upstreamTrajectoryRadius
+
+    [<Fact>]
+    let ``Y jaw reference transforms to isocentre frame`` () =
+        let sourcePlacement = placement Y Positive
+        let transformed = IsocentreFrame.fromSourceJawPlacement sourcePlacement
+
+        assertClose -687.394622542194<mm> transformed.ApertureFaceMidpoint.Z
+        Assert.Equal(sourcePlacement.ApertureFaceMidpoint.X, transformed.ApertureFaceMidpoint.X)
+        Assert.Equal(sourcePlacement.ApertureFaceMidpoint.Y, transformed.ApertureFaceMidpoint.Y)
+
+    [<Fact>]
+    let ``jaw frame transformation preserves orientation and body dimensions`` () =
+        let sourcePlacement = placement X Positive
+        let transformed = IsocentreFrame.fromSourceJawPlacement sourcePlacement
+
+        Assert.Equal(sourcePlacement.Axis, transformed.Axis)
+        Assert.Equal(sourcePlacement.Side, transformed.Side)
+        Assert.Equal(sourcePlacement.ApertureFaceAngleRadians, transformed.ApertureFaceAngleRadians)
+        Assert.Equal(sourcePlacement.BodyDimensions, transformed.BodyDimensions)
 
     [<Fact>]
     let ``positive and negative jaw placements are symmetric`` () =

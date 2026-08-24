@@ -15,7 +15,10 @@ let init () = ()
 /// Applies a client message to the current model.
 let update (_: Msg) (model: Model) = model
 
-let private trueBeamJaws = JscadGeometry.createJaws TrueBeamJaws.placements
+let private trueBeamJaws =
+    TrueBeamJaws.placements
+    |> List.map IsocentreFrame.fromSourceJawPlacement
+    |> JscadGeometry.createJaws
 
 let private staticFieldSize (label: string) =
     Html.label [

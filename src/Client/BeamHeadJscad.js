@@ -11,7 +11,7 @@ const { serialize } = stlSerializer;
 const sceneGuides = {
     isocentreGridSize: [500, 500],
     isocentreGridTick: 50,
-    isocentreZ: 1000,
+    isocentreZ: 0,
     axisSize: 500,
 };
 
@@ -119,8 +119,8 @@ export function startViewer(container, geometry) {
     const orbitControls = controls.orbit;
     const camera = {
         ...perspectiveCamera.defaults,
-        position: [700, 1000, 1450],
-        target: [0, 0, 500],
+        position: [800, 1200, 1200],
+        target: [0, 0, 0],
         up: [0, 1, 0],
     };
     let controlState = { ...orbitControls.defaults };

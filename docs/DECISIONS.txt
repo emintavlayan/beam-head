@@ -267,3 +267,9 @@ Evidence used for today's jaw decisions
 14:24 - Refined the simplified TrueBeam jaw-body dimensions
   - Stronger public evidence supports the 78 mm thickness, X midplane at 406 mm, Y upstream trajectory radius at 280 mm and Y midpoint radius at 319 mm.
   - The 200 mm cross-axis extent and 80 mm closing-axis extent remain explicit modelling approximations because exact public TrueBeam outer jaw dimensions were not found.
+
+
+08:42 - Introduced an explicit isocentre geometry frame
+  - Construction uses SourceFrame because machine geometry is naturally defined from the source.
+  - The viewer and STL use IsocentreFrame because isocentre-origin coordinates match normal medical-physics and TPS convention.
+  - The transformation is only Z_isocentre = Z_source - 1000 mm and does not alter physical geometry.

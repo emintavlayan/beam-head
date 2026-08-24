@@ -4,8 +4,15 @@ namespace BeamHead.Domain
 [<Measure>]
 type mm
 
-/// Represents a point in the BeamHead coordinate system.
-type Point3 = {
+/// Represents a point measured from the source/target CAX origin.
+type SourceFramePoint = {
+    X: float<mm>
+    Y: float<mm>
+    Z: float<mm>
+}
+
+/// Represents a point measured from the isocentre origin.
+type IsocentreFramePoint = {
     X: float<mm>
     Y: float<mm>
     Z: float<mm>
@@ -34,11 +41,20 @@ type DivergentApertureLine = {
     IsocentrePlaneEdge: float<mm>
 }
 
-/// Describes a final rigid jaw pose whose reference is the aperture-forming face midpoint at the jaw midplane.
-type JawPlacement = {
+/// Describes a source-frame jaw pose whose reference is the aperture-forming face midpoint at the jaw midplane.
+type SourceFrameJawPlacement = {
     Axis: JawAxis
     Side: JawSide
-    ApertureFaceMidpoint: Point3
+    ApertureFaceMidpoint: SourceFramePoint
+    ApertureFaceAngleRadians: float
+    BodyDimensions: JawBodyDimensions
+}
+
+/// Describes an isocentre-frame jaw pose for presentation and export.
+type IsocentreFrameJawPlacement = {
+    Axis: JawAxis
+    Side: JawSide
+    ApertureFaceMidpoint: IsocentreFramePoint
     ApertureFaceAngleRadians: float
     BodyDimensions: JawBodyDimensions
 }

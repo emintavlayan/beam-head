@@ -3,10 +3,10 @@ namespace BeamHead.Domain
 /// Provides the fixed machine constants for the current TrueBeam geometry slice.
 [<RequireQualifiedAccess>]
 module TrueBeamGeometry =
-    /// The target/source plane Z coordinate and global coordinate-system origin.
+    /// The target/source plane Z coordinate and SourceFrame origin.
     let sourcePlaneZ = 0.0<mm>
 
-    /// The downstream isocentre Z coordinate.
+    /// The downstream isocentre Z coordinate in SourceFrame.
     let isocentreZ = 1000.0<mm>
 
     /// The fixed full field size at isocentre in both X and Y.
@@ -62,7 +62,7 @@ module TrueBeamJaws =
         Thickness = TrueBeamGeometry.jawThickness
     }
 
-    let private xJaw side =
+    let private xJaw side : SourceFrameJawPlacement =
         let line = apertureLine side
 
         let referenceCoordinate =
@@ -92,7 +92,7 @@ module TrueBeamJaws =
 
         (-linearCoefficient + sqrt discriminant) / (2.0 * (1.0 + slope * slope))
 
-    let private yJaw side =
+    let private yJaw side : SourceFrameJawPlacement =
         let line = apertureLine side
 
         let referenceZ =
@@ -113,5 +113,5 @@ module TrueBeamJaws =
             BodyDimensions = bodyDimensions
         }
 
-    /// The final rigid poses of the two X jaws and two Y jaws.
+    /// The final source-frame rigid poses of the two X jaws and two Y jaws.
     let placements = [ xJaw Negative; xJaw Positive; yJaw Negative; yJaw Positive ]

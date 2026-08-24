@@ -21,7 +21,7 @@ let private createJscadJaw
 let private downloadJscadStl (fileName: string) (geometry: obj array) : unit = jsNative
 
 /// Translates a calculated domain jaw placement into a JSCAD solid.
-let createJaw (placement: JawPlacement) =
+let createJaw (placement: IsocentreFrameJawPlacement) =
     let axis =
         match placement.Axis with
         | X -> "x"
@@ -43,8 +43,8 @@ let createJaw (placement: JawPlacement) =
         (float placement.ApertureFaceMidpoint.Z)
         placement.ApertureFaceAngleRadians
 
-/// Translates calculated domain jaw placements into JSCAD solids.
-let createJaws placements =
+/// Translates calculated isocentre-frame jaw placements into JSCAD solids.
+let createJaws (placements: IsocentreFrameJawPlacement list) =
     placements |> List.map createJaw |> List.toArray
 
 /// Downloads all supplied JSCAD solids together as one binary STL file.
