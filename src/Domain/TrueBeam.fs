@@ -9,20 +9,20 @@ module TrueBeamGeometry =
     /// The downstream isocentre Z coordinate in SourceFrame.
     let isocentreZ = 1000.0<mm>
 
-    /// The fixed full field size at isocentre in both X and Y.
+    /// The fixed nominal clinical field size at isocentre in both X and Y.
     let fieldSizeAtIsocentre = 400.0<mm>
 
-    /// The positive field edge at isocentre.
-    let positiveFieldEdgeAtIsocentre = fieldSizeAtIsocentre / 2.0
+    /// The unsigned nominal clinical jaw edge at isocentre.
+    let nominalFieldEdgeAtIsocentre = fieldSizeAtIsocentre / 2.0
 
-    /// The negative field edge at isocentre.
-    let negativeFieldEdgeAtIsocentre = -positiveFieldEdgeAtIsocentre
+    /// Half of the non-zero 3 x 3 mm TrueBeam source-plane jaw focus.
+    let sourcePlaneHalfFocus = 1.5<mm>
 
-    /// The positive edge of the projected source-plane square.
-    let positiveSourcePlaneEdge = 1.5<mm>
+    /// The unsigned physical jaw aperture edge at isocentre after the outward focus correction.
+    let jawPhysicalEdgeAtIsocentre = nominalFieldEdgeAtIsocentre + sourcePlaneHalfFocus
 
-    /// The negative edge of the projected source-plane square.
-    let negativeSourcePlaneEdge = -positiveSourcePlaneEdge
+    /// The total physical jaw separation at isocentre after correcting both jaws.
+    let jawPhysicalSeparationAtIsocentre = 2.0 * jawPhysicalEdgeAtIsocentre
 
     /// The exact physical thickness of every TrueBeam jaw.
     let jawThickness = 78.0<mm>
@@ -52,8 +52,8 @@ module TrueBeamJaws =
 
     /// Creates the divergent aperture line for a jaw side.
     let apertureLine side = {
-        SourcePlaneEdge = signedEdge side TrueBeamGeometry.positiveSourcePlaneEdge
-        IsocentrePlaneEdge = signedEdge side TrueBeamGeometry.positiveFieldEdgeAtIsocentre
+        SourcePlaneEdge = signedEdge side TrueBeamGeometry.sourcePlaneHalfFocus
+        IsocentrePlaneEdge = signedEdge side TrueBeamGeometry.jawPhysicalEdgeAtIsocentre
     }
 
     let private bodyDimensions = {

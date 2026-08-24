@@ -67,14 +67,33 @@ module TrueBeamJawTests =
         Assert.Equal(1000.0<mm>, displaySource.Z)
 
     [<Fact>]
-    let ``fixed field edges are plus and minus 200 millimetres at isocentre`` () =
-        Assert.Equal(200.0<mm>, TrueBeamGeometry.positiveFieldEdgeAtIsocentre)
-        Assert.Equal(-200.0<mm>, TrueBeamGeometry.negativeFieldEdgeAtIsocentre)
+    let ``nominal jaw setting has plus and minus 200 millimetre edges at isocentre`` () =
+        Assert.Equal(400.0<mm>, TrueBeamGeometry.fieldSizeAtIsocentre)
+        Assert.Equal(200.0<mm>, TrueBeamGeometry.nominalFieldEdgeAtIsocentre)
+        Assert.Equal(-200.0<mm>, -TrueBeamGeometry.nominalFieldEdgeAtIsocentre)
 
     [<Fact>]
-    let ``source divergence edges are plus and minus 1 point 5 millimetres`` () =
-        Assert.Equal(1.5<mm>, TrueBeamGeometry.positiveSourcePlaneEdge)
-        Assert.Equal(-1.5<mm>, TrueBeamGeometry.negativeSourcePlaneEdge)
+    let ``source focus has plus and minus 1 point 5 millimetre edges`` () =
+        Assert.Equal(1.5<mm>, TrueBeamGeometry.sourcePlaneHalfFocus)
+        Assert.Equal(1.5<mm>, (TrueBeamJaws.apertureLine Positive).SourcePlaneEdge)
+        Assert.Equal(-1.5<mm>, (TrueBeamJaws.apertureLine Negative).SourcePlaneEdge)
+
+    [<Fact>]
+    let ``physical jaw aperture has plus and minus 201 point 5 millimetre edges at isocentre`` () =
+        Assert.Equal(201.5<mm>, TrueBeamGeometry.jawPhysicalEdgeAtIsocentre)
+
+        Assert.Equal(
+            TrueBeamGeometry.nominalFieldEdgeAtIsocentre
+            + TrueBeamGeometry.sourcePlaneHalfFocus,
+            TrueBeamGeometry.jawPhysicalEdgeAtIsocentre
+        )
+
+        Assert.Equal(201.5<mm>, (TrueBeamJaws.apertureLine Positive).IsocentrePlaneEdge)
+        Assert.Equal(-201.5<mm>, (TrueBeamJaws.apertureLine Negative).IsocentrePlaneEdge)
+
+    [<Fact>]
+    let ``nominal 400 millimetre setting produces 403 millimetre physical jaw separation`` () =
+        Assert.Equal(403.0<mm>, TrueBeamGeometry.jawPhysicalSeparationAtIsocentre)
 
     [<Fact>]
     let ``jaw physical thickness is exactly 78 millimetres`` () =
@@ -140,7 +159,7 @@ module TrueBeamJawTests =
         let sourcePlacement = placement Y Positive
         let transformed = IsocentreFrame.fromSourceJawPlacement sourcePlacement
 
-        assertClose -687.394622542194<mm> transformed.ApertureFaceMidpoint.Z
+        assertClose -687.486551165241<mm> transformed.ApertureFaceMidpoint.Z
         Assert.Equal(sourcePlacement.ApertureFaceMidpoint.X, transformed.ApertureFaceMidpoint.X)
         Assert.Equal(sourcePlacement.ApertureFaceMidpoint.Y, transformed.ApertureFaceMidpoint.Y)
 
@@ -161,28 +180,28 @@ module TrueBeamJawTests =
         let negativeY = placement Y Negative
         let positiveY = placement Y Positive
 
-        assertClose -positiveX.ApertureFaceMidpoint.X negativeX.ApertureFaceMidpoint.X
-        assertClose positiveX.ApertureFaceMidpoint.Z negativeX.ApertureFaceMidpoint.Z
-        assertAngleClose -positiveX.ApertureFaceAngleRadians negativeX.ApertureFaceAngleRadians
-        assertClose -positiveY.ApertureFaceMidpoint.Y negativeY.ApertureFaceMidpoint.Y
-        assertClose positiveY.ApertureFaceMidpoint.Z negativeY.ApertureFaceMidpoint.Z
-        assertAngleClose -positiveY.ApertureFaceAngleRadians negativeY.ApertureFaceAngleRadians
+        Assert.Equal(-positiveX.ApertureFaceMidpoint.X, negativeX.ApertureFaceMidpoint.X)
+        Assert.Equal(positiveX.ApertureFaceMidpoint.Z, negativeX.ApertureFaceMidpoint.Z)
+        Assert.Equal(-positiveX.ApertureFaceAngleRadians, negativeX.ApertureFaceAngleRadians)
+        Assert.Equal(-positiveY.ApertureFaceMidpoint.Y, negativeY.ApertureFaceMidpoint.Y)
+        Assert.Equal(positiveY.ApertureFaceMidpoint.Z, negativeY.ApertureFaceMidpoint.Z)
+        Assert.Equal(-positiveY.ApertureFaceAngleRadians, negativeY.ApertureFaceAngleRadians)
 
     [<Fact>]
     let ``positive jaw reference positions and focusing angle are calculated from divergence`` () =
         let positiveX = placement X Positive
         let positiveY = placement Y Positive
-        let expectedAngle = atan (198.5 / 1000.0)
+        let expectedAngle = atan 0.2
 
-        assertClose 82.091<mm> positiveX.ApertureFaceMidpoint.X
+        assertClose 82.7<mm> positiveX.ApertureFaceMidpoint.X
         assertClose 406.0<mm> positiveX.ApertureFaceMidpoint.Z
-        assertClose 63.5521674253744<mm> positiveY.ApertureFaceMidpoint.Y
-        assertClose 312.605377457806<mm> positiveY.ApertureFaceMidpoint.Z
+        assertClose 64.0026897669517<mm> positiveY.ApertureFaceMidpoint.Y
+        assertClose 312.513448834759<mm> positiveY.ApertureFaceMidpoint.Z
         assertAngleClose expectedAngle positiveX.ApertureFaceAngleRadians
         assertAngleClose expectedAngle positiveY.ApertureFaceAngleRadians
 
     [<Fact>]
-    let ``aperture faces project to source and fixed isocentre field edges`` () =
+    let ``aperture faces project to source focus and corrected physical isocentre edges`` () =
         for jaw in TrueBeamJaws.placements do
             let referenceCoordinate =
                 match jaw.Axis with
@@ -193,13 +212,13 @@ module TrueBeamJawTests =
                 referenceCoordinate
                 + tan jaw.ApertureFaceAngleRadians * (z - jaw.ApertureFaceMidpoint.Z)
 
-            let expectedSourceEdge, expectedFieldEdge =
+            let expectedSourceEdge, expectedPhysicalEdge =
                 match jaw.Side with
-                | Negative -> TrueBeamGeometry.negativeSourcePlaneEdge, TrueBeamGeometry.negativeFieldEdgeAtIsocentre
-                | Positive -> TrueBeamGeometry.positiveSourcePlaneEdge, TrueBeamGeometry.positiveFieldEdgeAtIsocentre
+                | Negative -> -TrueBeamGeometry.sourcePlaneHalfFocus, -TrueBeamGeometry.jawPhysicalEdgeAtIsocentre
+                | Positive -> TrueBeamGeometry.sourcePlaneHalfFocus, TrueBeamGeometry.jawPhysicalEdgeAtIsocentre
 
             assertClose expectedSourceEdge (projectedCoordinate TrueBeamGeometry.sourcePlaneZ)
-            assertClose expectedFieldEdge (projectedCoordinate TrueBeamGeometry.isocentreZ)
+            assertClose expectedPhysicalEdge (projectedCoordinate TrueBeamGeometry.isocentreZ)
 
     [<Fact>]
     let ``domain jaw geometry retains millimetre units through the rendering boundary input`` () =
@@ -342,12 +361,14 @@ module TrueBeamMlcTests =
         assertClose 203.6<mm> positiveProjection
 
     [<Fact>]
-    let ``retracted MLC tips are 3 point 6 millimetres outside the jaw field edges`` () =
+    let ``retracted MLC tips are 2 point 1 millimetres outside the physical jaw edges`` () =
         let clearance =
             TrueBeamMlc.retractedTipAtIsocentre
-            - TrueBeamGeometry.positiveFieldEdgeAtIsocentre
+            - TrueBeamGeometry.jawPhysicalEdgeAtIsocentre
 
-        assertClose 3.6<mm> clearance
+        Assert.Equal(201.5<mm>, TrueBeamGeometry.jawPhysicalEdgeAtIsocentre)
+        Assert.Equal(203.6<mm>, TrueBeamMlc.retractedTipAtIsocentre)
+        assertClose 2.1<mm> clearance
 
     [<Fact>]
     let ``MLC frame transformation changes only Z`` () =

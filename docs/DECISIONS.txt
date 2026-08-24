@@ -402,3 +402,12 @@ Evidence used for today's jaw decisions
   - The 3D mode keeps the existing JSCAD orbit behaviour unchanged.
   - BEV is intentionally fixed for now so rotating or zooming cannot destroy the meaning of the source-eye view.
   - BEV changes presentation only; geometry and STL export are unchanged.
+
+14:34 - Corrected the interpretation of the TrueBeam 3 x 3 mm jaw focus
+  - The 400 mm jaw value remains the nominal clinical jaw setting.
+  - Lloyd's updated TrueBeam model shifts each physical jaw 1.5 mm away from CAX, producing 3 mm additional jaw separation.
+  - Therefore a nominal +/-200 mm jaw setting is represented geometrically by aperture edges at +/-201.5 mm at isocentre.
+  - Jaw faces focus from +/-1.5 mm in the source plane to +/-201.5 mm at isocentre.
+  - The previous implementation incorrectly connected +/-1.5 mm at the source directly to +/-200 mm at isocentre.
+  - For the current TSEBT configuration, the retracted MLC remains at +/-203.6 mm, 2.1 mm outside the physical jaw edge.
+  - Evidence: Lloyd PhD 2017, Chapter 6 jaw-model comparison and TrueBeam Monte Carlo Data Package discussion.
