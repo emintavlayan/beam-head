@@ -367,3 +367,20 @@ Evidence used for today's jaw decisions
   - Kept the normal JSCAD drawGrid implementation and styling.
   - Increased the grid to 1000 x 1000 mm with 50 mm and 5 mm ticks.
   - No geometry, coordinate or STL behaviour changed.
+
+11:28 - Fixed the first simplified Millennium 120 MLC model
+  - Current TSEBT simulations always use the MLC fully retracted, so we model two continuous tungsten bank envelopes instead of 120 individual leaves.
+  - Existing TOPAS geometry places the MLC at Z = -491 mm from isocentre, equal to 509 mm from source.
+  - Existing TOPAS bank positions are +/-103.6324 mm at the MLC plane, which project to +/-203.6 mm at isocentre.
+  - The MLC therefore remains 3.6 mm farther out than the +/-200 mm jaw setting used for the 400 x 400 mm field.
+  - Published Millennium geometry supports approximately 67 mm beam-axis thickness, an 80 mm rounded leaf-tip radius and approximately 11.3 degree outer tip geometry.
+  - Keep the centre of the beam-facing rounded tip at the MLC midplane as the bank reference point.
+  - Preserve the rounded X-Z profile reconstructed in Excel as the current scattering-face model.
+  - The rounded outer transition, 106.89 mm rear extent, constant 203.6 mm bank extrusion and omission of individual leaves/tongue-and-groove are explicit modelling approximations.
+  - This simplification is intended only for the fully retracted TSEBT configuration; MLC-shaped fields would require a more detailed individual-leaf model.
+  - Evidence:
+    - Hariri et al., JACMP 2010 - Varian rounded tip geometry.
+    - Bergman et al., JACMP 2014 - Millennium 120 thickness, 8 cm tip radius and 11.3 degree tip angle.
+    - Lloyd, PhD thesis 2017 - Millennium 120 location, rounded/divergent geometry and retracted electron operation.
+    - Kaluarachchi et al., Medical Physics 2020 - importance of MLC leaf-end/side scattering for electron Monte Carlo.
+    - Existing TSEBT TOPAS inputs - MLC Z = -49.1 cm and bank X = +/-10.36324 cm.

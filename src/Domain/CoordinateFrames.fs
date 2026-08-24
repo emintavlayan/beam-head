@@ -36,6 +36,14 @@ module IsocentreFrame =
         BodyDimensions = placement.BodyDimensions
     }
 
+    /// Converts a source-frame MLC bank placement to the isocentre frame.
+    let fromSourceMlcBankPlacement (placement: SourceFrameMlcBankPlacement) : IsocentreFrameMlcBankPlacement = {
+        Side = placement.Side
+        TipReference = fromSourcePoint placement.TipReference
+        LocalProfile = placement.LocalProfile
+        CrossLeafWidth = placement.CrossLeafWidth
+    }
+
     /// The isocentre origin in the isocentre frame.
     let isocentre = fromSourcePoint SourceFrame.isocentre
 

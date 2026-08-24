@@ -66,6 +66,30 @@ type IsocentreFrameJawPlacement = {
     BodyDimensions: JawBodyDimensions
 }
 
+/// Identifies one of the opposing Millennium MLC banks.
+type MlcBankSide =
+    | NegativeBank
+    | PositiveBank
+
+/// Represents a point in the local X-Z profile of a simplified MLC bank.
+type MlcProfilePoint = { X: float<mm>; Z: float<mm> }
+
+/// Describes a source-frame MLC bank whose reference is the beam-facing tip centre at the MLC midplane.
+type SourceFrameMlcBankPlacement = {
+    Side: MlcBankSide
+    TipReference: SourceFramePoint
+    LocalProfile: MlcProfilePoint list
+    CrossLeafWidth: float<mm>
+}
+
+/// Describes an isocentre-frame MLC bank for presentation and export.
+type IsocentreFrameMlcBankPlacement = {
+    Side: MlcBankSide
+    TipReference: IsocentreFramePoint
+    LocalProfile: MlcProfilePoint list
+    CrossLeafWidth: float<mm>
+}
+
 /// Provides calculations for divergent aperture lines.
 [<RequireQualifiedAccess>]
 module DivergentApertureLine =

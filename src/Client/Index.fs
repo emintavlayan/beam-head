@@ -15,13 +15,20 @@ let init () = ()
 /// Applies a client message to the current model.
 let update (_: Msg) (model: Model) = model
 
-let private trueBeamJawsForExport =
+let private trueBeamJaws =
     TrueBeamJaws.placements
     |> List.map IsocentreFrame.fromSourceJawPlacement
     |> JscadGeometry.createJaws
 
-let private trueBeamJawsForViewer =
-    JscadGeometry.createViewerDisplay trueBeamJawsForExport
+let private trueBeamMlcBanks =
+    TrueBeamMlc.placements
+    |> List.map IsocentreFrame.fromSourceMlcBankPlacement
+    |> JscadGeometry.createMlcBanks
+
+let private trueBeamGeometryForExport = Array.append trueBeamJaws trueBeamMlcBanks
+
+let private trueBeamGeometryForViewer =
+    JscadGeometry.createViewerDisplay trueBeamGeometryForExport
 
 let private staticFieldSize (label: string) =
     Html.label [
@@ -78,11 +85,30 @@ let private controlsCard =
                         prop.text "Fixed 400 x 400 mm field at isocentre"
                     ]
 
+                    Html.div [ prop.className "divider my-0"; prop.text "Static MLC" ]
+
+                    Html.div [
+                        prop.className "rounded-box border border-base-300 bg-base-200 p-3"
+                        prop.children [
+                            Html.div [
+                                prop.className "flex items-center justify-between gap-3"
+                                prop.children [
+                                    Html.span [ prop.className "font-medium"; prop.text "Millennium 120" ]
+                                    Html.span [ prop.className "badge badge-neutral"; prop.text "Retracted" ]
+                                ]
+                            ]
+                            Html.p [
+                                prop.className "mt-1 text-sm text-base-content/60"
+                                prop.text "Simplified two-bank geometry"
+                            ]
+                        ]
+                    ]
+
                     Html.button [
                         prop.className "btn btn-primary mt-1 w-full"
                         prop.onClick (fun _ ->
-                            JscadGeometry.downloadStl "truebeam-jaws-400x400mm.stl" trueBeamJawsForExport)
-                        prop.text "Export four-jaw STL"
+                            JscadGeometry.downloadStl "truebeam-400x400mm-retracted-mlc.stl" trueBeamGeometryForExport)
+                        prop.text "Export beam head STL"
                     ]
                 ]
             ]
@@ -99,13 +125,13 @@ let private viewerCard =
                     Html.h2 [ prop.className "text-lg font-semibold"; prop.text "3D preview" ]
                     Html.p [
                         prop.className "text-sm text-base-content/60"
-                        prop.text "TrueBeam X and Y jaws - static 400 x 400 mm field"
+                        prop.text "TrueBeam jaws and retracted Millennium 120 MLC"
                     ]
                 ]
             ]
             Html.div [
                 prop.className "p-3"
-                prop.children [ GeometryViewer.View trueBeamJawsForViewer ]
+                prop.children [ GeometryViewer.View trueBeamGeometryForViewer ]
             ]
         ]
     ]

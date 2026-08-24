@@ -4,7 +4,8 @@ import stlSerializer from "@jscad/stl-serializer";
 
 const { primitives } = modeling;
 const { colorize } = modeling.colors;
-const { mirrorZ, rotateX, rotateY, translate } = modeling.transforms;
+const { extrudeLinear } = modeling.extrusions;
+const { mirrorX, mirrorZ, rotateX, rotateY, translate } = modeling.transforms;
 const { cameras, controls, drawCommands, entitiesFromSolids, prepareRender } = renderer;
 const { serialize } = stlSerializer;
 
@@ -47,6 +48,32 @@ export function createJaw(
         : [0.88, 0.42, 0.12, 1];
 
     return colorize(viewerColor, jaw);
+}
+
+export function createMlcBank(
+    side,
+    crossLeafWidth,
+    referenceX,
+    referenceY,
+    referenceZ,
+    profilePoints,
+) {
+    const bankProfile = primitives.polygon({
+        points: profilePoints,
+        orientation: "clockwise",
+    });
+
+    let bank = extrudeLinear({ height: crossLeafWidth }, bankProfile);
+    bank = translate([0, 0, -crossLeafWidth / 2], bank);
+    bank = rotateX(Math.PI / 2, bank);
+
+    if (side === "negative") {
+        bank = mirrorX(bank);
+    }
+
+    bank = translate([referenceX, referenceY, referenceZ], bank);
+
+    return colorize([0.45, 0.25, 0.72, 1], bank);
 }
 
 export function downloadStl(fileName, geometries) {

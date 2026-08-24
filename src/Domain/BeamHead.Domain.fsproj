@@ -6,6 +6,7 @@
   <ItemGroup>
     <Compile Include="Geometry.fs" />
     <Compile Include="TrueBeam.fs" />
+    <Compile Include="TrueBeamMlc.fs" />
     <Compile Include="CoordinateFrames.fs" />
     <Content Include="paket.references" />
   </ItemGroup>

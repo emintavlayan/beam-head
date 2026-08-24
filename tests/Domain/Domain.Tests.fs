@@ -204,3 +204,136 @@ module TrueBeamJawTests =
             requiresMillimetres jaw.BodyDimensions.ClosingAxisExtent
             requiresMillimetres jaw.BodyDimensions.CrossAxisExtent
             requiresMillimetres jaw.BodyDimensions.Thickness
+
+module TrueBeamMlcTests =
+    let private placement side =
+        TrueBeamMlc.placements |> List.find (fun placement -> placement.Side = side)
+
+    let private assertClose (expected: float<mm>) (actual: float<mm>) =
+        Assert.InRange(actual, expected - 0.000001<mm>, expected + 0.000001<mm>)
+
+    [<Fact>]
+    let ``MLC midplane is 509 millimetres from source`` () =
+        Assert.Equal(509.0<mm>, TrueBeamMlc.midplaneZ)
+
+        TrueBeamMlc.placements
+        |> List.iter (fun bank -> Assert.Equal(509.0<mm>, bank.TipReference.Z))
+
+    [<Fact>]
+    let ``MLC placements transform to minus 491 millimetres in isocentre frame`` () =
+        for bank in TrueBeamMlc.placements do
+            let transformed = IsocentreFrame.fromSourceMlcBankPlacement bank
+
+            Assert.Equal(-491.0<mm>, transformed.TipReference.Z)
+
+    [<Fact>]
+    let ``supported MLC thickness is 67 millimetres with 33 point 5 millimetre half thickness`` () =
+        Assert.Equal(67.0<mm>, TrueBeamMlc.thickness)
+        Assert.Equal(33.5<mm>, TrueBeamMlc.halfThickness)
+
+        let profileMinimum = TrueBeamMlc.localProfile |> List.minBy _.Z
+        let profileMaximum = TrueBeamMlc.localProfile |> List.maxBy _.Z
+
+        Assert.Equal(-33.5<mm>, profileMinimum.Z)
+        Assert.Equal(33.5<mm>, profileMaximum.Z)
+
+    [<Fact>]
+    let ``supported rounded tip parameters are retained`` () =
+        Assert.Equal(80.0<mm>, TrueBeamMlc.tipRadius)
+        Assert.Equal(11.3, TrueBeamMlc.outerTipAngleDegrees)
+
+    [<Fact>]
+    let ``reconstructed profile contains the local tip reference and all supplied points`` () =
+        let hasTip =
+            TrueBeamMlc.localProfile
+            |> List.exists (fun point -> point.X = 0.0<mm> && point.Z = 0.0<mm>)
+
+        Assert.True(hasTip)
+        Assert.Equal(31, TrueBeamMlc.localProfile.Length)
+
+    [<Fact>]
+    let ``simplified profile rear extent is 106 point 89 millimetres`` () =
+        let profileRearExtent = TrueBeamMlc.localProfile |> List.maxBy _.X |> _.X
+
+        Assert.Equal(106.89<mm>, TrueBeamMlc.simplifiedRearExtent)
+        Assert.Equal(106.89<mm>, profileRearExtent)
+
+    [<Fact>]
+    let ``simplified continuous bank extrusion is 203 point 6 millimetres`` () =
+        Assert.Equal(203.6<mm>, TrueBeamMlc.simplifiedCrossLeafWidth)
+
+        TrueBeamMlc.placements
+        |> List.iter (fun bank -> Assert.Equal(203.6<mm>, bank.CrossLeafWidth))
+
+    [<Fact>]
+    let ``positive and negative MLC bank placements are symmetric`` () =
+        let negative = placement NegativeBank
+        let positive = placement PositiveBank
+
+        Assert.Equal(-positive.TipReference.X, negative.TipReference.X)
+        Assert.Equal(positive.TipReference.Y, negative.TipReference.Y)
+        Assert.Equal(positive.TipReference.Z, negative.TipReference.Z)
+        Assert.True(positive.LocalProfile = negative.LocalProfile)
+        Assert.Equal(positive.CrossLeafWidth, negative.CrossLeafWidth)
+
+    [<Fact>]
+    let ``MLC bank tip references match the existing TOPAS positions`` () =
+        let negative = placement NegativeBank
+        let positive = placement PositiveBank
+
+        Assert.Equal(-103.6324<mm>, negative.TipReference.X)
+        Assert.Equal(103.6324<mm>, positive.TipReference.X)
+
+        for bank in [ negative; positive ] do
+            Assert.Equal(0.0<mm>, bank.TipReference.Y)
+            Assert.Equal(509.0<mm>, bank.TipReference.Z)
+
+    [<Fact>]
+    let ``MLC bank tips project to plus and minus 203 point 6 millimetres at isocentre`` () =
+        let negativeProjection =
+            placement NegativeBank
+            |> _.TipReference.X
+            |> TrueBeamMlc.projectTipCoordinateToIsocentre
+
+        let positiveProjection =
+            placement PositiveBank
+            |> _.TipReference.X
+            |> TrueBeamMlc.projectTipCoordinateToIsocentre
+
+        assertClose -203.6<mm> negativeProjection
+        assertClose 203.6<mm> positiveProjection
+
+    [<Fact>]
+    let ``retracted MLC tips are 3 point 6 millimetres outside the jaw field edges`` () =
+        let projectedTip =
+            TrueBeamMlc.projectTipCoordinateToIsocentre TrueBeamMlc.positiveTipReferenceX
+
+        let clearance = projectedTip - TrueBeamGeometry.positiveFieldEdgeAtIsocentre
+
+        assertClose 3.6<mm> clearance
+
+    [<Fact>]
+    let ``MLC frame transformation changes only Z`` () =
+        let sourcePlacement = placement PositiveBank
+        let transformed = IsocentreFrame.fromSourceMlcBankPlacement sourcePlacement
+
+        Assert.Equal(sourcePlacement.Side, transformed.Side)
+        Assert.Equal(sourcePlacement.TipReference.X, transformed.TipReference.X)
+        Assert.Equal(sourcePlacement.TipReference.Y, transformed.TipReference.Y)
+        Assert.Equal(sourcePlacement.TipReference.Z - 1000.0<mm>, transformed.TipReference.Z)
+        Assert.True(sourcePlacement.LocalProfile = transformed.LocalProfile)
+        Assert.Equal(sourcePlacement.CrossLeafWidth, transformed.CrossLeafWidth)
+
+    [<Fact>]
+    let ``domain MLC geometry retains millimetre units through the rendering boundary input`` () =
+        let requiresMillimetres (_: float<mm>) = ()
+
+        for bank in TrueBeamMlc.placements do
+            requiresMillimetres bank.TipReference.X
+            requiresMillimetres bank.TipReference.Y
+            requiresMillimetres bank.TipReference.Z
+            requiresMillimetres bank.CrossLeafWidth
+
+            for point in bank.LocalProfile do
+                requiresMillimetres point.X
+                requiresMillimetres point.Z
