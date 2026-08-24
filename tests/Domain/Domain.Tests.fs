@@ -59,6 +59,14 @@ module TrueBeamJawTests =
         Assert.Equal(594.0<mm>, displayPoint.Z)
 
     [<Fact>]
+    let ``viewer display source is derived at positive 1000 millimetres for BEV`` () =
+        let displaySource = IsocentreFrame.source |> ViewerDisplay.fromIsocentrePoint
+
+        Assert.Equal(0.0<mm>, displaySource.X)
+        Assert.Equal(0.0<mm>, displaySource.Y)
+        Assert.Equal(1000.0<mm>, displaySource.Z)
+
+    [<Fact>]
     let ``fixed field edges are plus and minus 200 millimetres at isocentre`` () =
         Assert.Equal(200.0<mm>, TrueBeamGeometry.positiveFieldEdgeAtIsocentre)
         Assert.Equal(-200.0<mm>, TrueBeamGeometry.negativeFieldEdgeAtIsocentre)

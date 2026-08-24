@@ -393,3 +393,12 @@ Evidence used for today's jaw decisions
   - These two 203.6 mm values describe different quantities and are kept separate even though they are numerically equal.
   - The 106.89 mm rear body depth remains an explicit modelling approximation used only to close the reconstructed bank behind the scattering face.
   - Rule: supported machine inputs are stored; dependent physical coordinates are calculated.
+
+13:32 - Added a true Beam's Eye View for geometry inspection
+  - BEV follows the normal radiotherapy meaning: the camera is at the radiation source looking downstream along CAX toward isocentre.
+  - The BEV source position is derived from the existing coordinate frames rather than hardcoded in the renderer.
+  - In viewer-display coordinates the source is at positive Z because the existing viewer-only Z mirror is retained.
+  - BEV uses perspective projection with isocentre at the centre of view.
+  - The 3D mode keeps the existing JSCAD orbit behaviour unchanged.
+  - BEV is intentionally fixed for now so rotating or zooming cannot destroy the meaning of the source-eye view.
+  - BEV changes presentation only; geometry and STL export are unchanged.

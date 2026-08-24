@@ -94,16 +94,25 @@ export function createViewerDisplay(geometries) {
     return mirrorZ(...geometries);
 }
 
-export function startViewer(container, geometry) {
+export function startViewer(container, geometry, viewerMode, sourceX, sourceY, sourceZ) {
     const perspectiveCamera = cameras.perspective;
     const orbitControls = controls.orbit;
-    const camera = {
-        ...perspectiveCamera.defaults,
-        position: perspectiveCamera.defaults.position.map(
-            coordinate => coordinate * initialCameraDistanceScale,
-        ),
-        target: [0, 0, 0],
-    };
+    const isBeamEyeView = viewerMode === "beamEyeView";
+    const camera = isBeamEyeView
+        ? {
+            ...perspectiveCamera.defaults,
+            position: [sourceX, sourceY, sourceZ],
+            target: [0, 0, 0],
+            up: [0, 1, 0],
+            fov: Math.PI / 6,
+        }
+        : {
+            ...perspectiveCamera.defaults,
+            position: perspectiveCamera.defaults.position.map(
+                coordinate => coordinate * initialCameraDistanceScale,
+            ),
+            target: [0, 0, 0],
+        };
     let controlState = { ...orbitControls.defaults };
     let updateView = true;
     let rotateDelta = [0, 0];
@@ -161,7 +170,7 @@ export function startViewer(container, geometry) {
     };
 
     const updateAndRender = () => {
-        if (rotateDelta[0] || rotateDelta[1]) {
+        if (!isBeamEyeView && (rotateDelta[0] || rotateDelta[1])) {
             const updated = orbitControls.rotate(
                 { controls: controlState, camera, speed: 0.006 },
                 rotateDelta,
@@ -171,7 +180,7 @@ export function startViewer(container, geometry) {
             updateView = true;
         }
 
-        if (zoomDelta) {
+        if (!isBeamEyeView && zoomDelta) {
             const updated = orbitControls.zoom(
                 { controls: controlState, camera, speed: 0.08 },
                 zoomDelta,
@@ -182,11 +191,14 @@ export function startViewer(container, geometry) {
         }
 
         if (updateView) {
-            const updated = orbitControls.update({ controls: controlState, camera });
-            controlState = { ...controlState, ...updated.controls };
-            camera.position = updated.camera.position;
+            if (!isBeamEyeView) {
+                const updated = orbitControls.update({ controls: controlState, camera });
+                controlState = { ...controlState, ...updated.controls };
+                camera.position = updated.camera.position;
+            }
+
             perspectiveCamera.update(camera, camera);
-            updateView = controlState.changed;
+            updateView = !isBeamEyeView && controlState.changed;
             render(renderOptions);
         }
 
@@ -222,11 +234,13 @@ export function startViewer(container, geometry) {
         event.preventDefault();
     };
 
-    container.addEventListener("pointerdown", pointerDownHandler);
-    container.addEventListener("pointermove", pointerMoveHandler);
-    container.addEventListener("pointerup", pointerUpHandler);
-    container.addEventListener("pointercancel", pointerUpHandler);
-    container.addEventListener("wheel", wheelHandler, { passive: false });
+    if (!isBeamEyeView) {
+        container.addEventListener("pointerdown", pointerDownHandler);
+        container.addEventListener("pointermove", pointerMoveHandler);
+        container.addEventListener("pointerup", pointerUpHandler);
+        container.addEventListener("pointercancel", pointerUpHandler);
+        container.addEventListener("wheel", wheelHandler, { passive: false });
+    }
 
     const resizeObserver = new ResizeObserver(updateProjection);
     resizeObserver.observe(container);
@@ -235,11 +249,13 @@ export function startViewer(container, geometry) {
     return () => {
         window.cancelAnimationFrame(animationFrame);
         resizeObserver.disconnect();
-        container.removeEventListener("pointerdown", pointerDownHandler);
-        container.removeEventListener("pointermove", pointerMoveHandler);
-        container.removeEventListener("pointerup", pointerUpHandler);
-        container.removeEventListener("pointercancel", pointerUpHandler);
-        container.removeEventListener("wheel", wheelHandler);
+        if (!isBeamEyeView) {
+            container.removeEventListener("pointerdown", pointerDownHandler);
+            container.removeEventListener("pointermove", pointerMoveHandler);
+            container.removeEventListener("pointerup", pointerUpHandler);
+            container.removeEventListener("pointercancel", pointerUpHandler);
+            container.removeEventListener("wheel", wheelHandler);
+        }
         container.replaceChildren();
     };
 }
