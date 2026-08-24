@@ -9,9 +9,62 @@ const { cameras, controls, drawCommands, entitiesFromSolids, prepareRender } = r
 const { serialize } = stlSerializer;
 
 const sceneGuides = {
-    gridSize: [700, 700],
-    gridTicks: [50, 10],
+    isocentreGridSize: [500, 500],
+    isocentreGridTick: 50,
+    isocentreZ: 1000,
     axisSize: 500,
+};
+
+const createIsocentreGridDrawCommand = (regl, params) => {
+    const [width, depth] = params.size;
+    const halfWidth = width / 2;
+    const halfDepth = depth / 2;
+    const positions = [];
+
+    for (let x = -halfWidth; x <= halfWidth; x += params.tick) {
+        positions.push(x, -halfDepth, params.z, x, halfDepth, params.z);
+    }
+
+    for (let y = -halfDepth; y <= halfDepth; y += params.tick) {
+        positions.push(-halfWidth, y, params.z, halfWidth, y, params.z);
+    }
+
+    return regl({
+        vert: `
+            precision mediump float;
+            attribute vec3 position;
+            uniform mat4 view, projection;
+            void main() {
+                gl_Position = projection * view * vec4(position, 1.0);
+            }
+        `,
+        frag: `
+            precision mediump float;
+            uniform vec4 color;
+            void main() {
+                gl_FragColor = color;
+            }
+        `,
+        attributes: {
+            position: positions,
+        },
+        uniforms: {
+            color: (context, props) => props.color,
+        },
+        count: positions.length / 3,
+        primitive: "lines",
+        lineWidth: 1,
+        depth: {
+            enable: true,
+        },
+        blend: {
+            enable: true,
+            func: {
+                src: "src alpha",
+                dst: "one minus src alpha",
+            },
+        },
+    });
 };
 
 export function createJaw(
@@ -66,8 +119,9 @@ export function startViewer(container, geometry) {
     const orbitControls = controls.orbit;
     const camera = {
         ...perspectiveCamera.defaults,
-        position: [450, 450, 650],
-        target: [0, 0, 350],
+        position: [700, 1000, 1450],
+        target: [0, 0, 500],
+        up: [0, 1, 0],
     };
     let controlState = { ...orbitControls.defaults };
     let updateView = true;
@@ -95,14 +149,20 @@ export function startViewer(container, geometry) {
         camera,
         drawCommands: {
             drawAxis: drawCommands.drawAxis,
-            drawGrid: drawCommands.drawGrid,
+            drawIsocentreGrid: createIsocentreGridDrawCommand,
             drawMesh: drawCommands.drawMesh,
         },
         entities: [
             {
-                visuals: { drawCmd: "drawGrid", show: true },
-                size: sceneGuides.gridSize,
-                ticks: sceneGuides.gridTicks,
+                visuals: {
+                    drawCmd: "drawIsocentreGrid",
+                    show: true,
+                    transparent: true,
+                    color: [0.32, 0.42, 0.52, 0.45],
+                },
+                size: sceneGuides.isocentreGridSize,
+                tick: sceneGuides.isocentreGridTick,
+                z: sceneGuides.isocentreZ,
             },
             {
                 visuals: { drawCmd: "drawAxis", show: true },
