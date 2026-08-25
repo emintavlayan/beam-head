@@ -467,3 +467,18 @@ Evidence used for today's jaw decisions
   - References:
     - Ugurlu BT, Temelli O. The impact of the field width on VMAT plan quality and the assessment of half field method. J Appl Clin Med Phys. 2020;21(3):115-122. doi:10.1002/acm2.12834. Reports Millennium MLC leaf length as 15 cm at isocentre.
     - Hadad K, Alipour H. Evaluation of MLC Thickness and Composite Effects on Collimation Parameters using EGSnrc and IAEA Phase Space Data. J Biomed Phys Eng. 2020;10(1):59-64. doi:10.31661/jbpe.v0i0.658. Table 1 reports Millennium 120 leaf length as 15 cm.
+
+14:39 - Added one viewer-only debug geometry layer
+  - BeamHead now uses a single Debug geometry toggle rather than separate controls for each diagnostic structure.
+  - Debug geometry is disabled by default and is strictly a viewer feature; it is never included in STL export.
+  - The debug layer reuses existing domain reference points rather than recalculating physical geometry in the renderer.
+  - The source marker is taken from IsocentreFrame.source.
+  - The isocentre marker is taken from IsocentreFrame.isocentre and therefore remains at the export-frame origin.
+  - Jaw reference markers use the actual ApertureFaceMidpoint of each calculated jaw placement.
+  - MLC reference markers use the actual TipReference of each calculated bank placement.
+  - A transparent yellow field-light pyramid represents the nominal 400 x 400 mm clinical field from the source centre to +/-200 mm at the isocentre plane.
+  - The nominal field-light guide is intentionally independent of the 403 mm physical jaw separation and the 410 mm simplified MLC material envelope.
+  - In three-dimensional mode the full pyramid, source marker, isocentre marker and component reference markers are shown.
+  - In BEV the source marker and pyramid side surfaces are omitted because the camera is located at the source; the nominal 400 x 400 mm isocentre outline and applicable reference markers remain visible.
+  - Component colors are kept semantically consistent: X jaws and X-jaw references are teal, Y jaws and Y-jaw references are orange, MLC geometry and references are violet, jaw wireframes are charcoal, the source marker is navy, the isocentre marker is rose, and the nominal field guide is yellow.
+  - Debug structures are intended to make coordinate-frame, aperture-focus and component-placement errors visually obvious without changing the physical model.

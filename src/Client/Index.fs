@@ -6,18 +6,28 @@ open Feliz
 /// Represents the static TrueBeam workbench state.
 type Model = {
     ViewerMode: GeometryViewer.ViewerMode
+    ShowDebugGeometry: bool
 }
 
 /// Represents messages handled by the static TrueBeam workbench.
-type Msg = SetViewerMode of GeometryViewer.ViewerMode
+type Msg =
+    | SetViewerMode of GeometryViewer.ViewerMode
+    | SetDebugGeometry of bool
 
 /// Creates the initial BeamHead client model.
-let init () = { ViewerMode = GeometryViewer.ThreeD }
+let init () = {
+    ViewerMode = GeometryViewer.ThreeD
+    ShowDebugGeometry = false
+}
 
 /// Applies a client message to the current model.
 let update msg model =
     match msg with
     | SetViewerMode viewerMode -> { model with ViewerMode = viewerMode }
+    | SetDebugGeometry showDebugGeometry -> {
+        model with
+            ShowDebugGeometry = showDebugGeometry
+      }
 
 let private trueBeamJawsForExport =
     TrueBeam.jaws
@@ -40,6 +50,50 @@ let private trueBeamMlcBanksForViewer =
 
 let private viewerDisplaySource =
     IsocentreFrame.source |> ViewerDisplay.fromIsocentrePoint
+
+let private viewerDisplayJawReferences axis =
+    TrueBeam.jaws
+    |> List.filter (fun jaw -> jaw.Axis = axis)
+    |> List.map (
+        IsocentreFrame.fromSourceJawPlacement
+        >> _.ApertureFaceMidpoint
+        >> ViewerDisplay.fromIsocentrePoint
+    )
+    |> List.toArray
+
+let private viewerDisplayMlcReferences =
+    TrueBeam.mlcBanks
+    |> List.map (
+        IsocentreFrame.fromSourceMlcBankPlacement
+        >> _.TipReference
+        >> ViewerDisplay.fromIsocentrePoint
+    )
+    |> List.toArray
+
+let private nominalFieldGuideHalfWidth = TrueBeamJaws.fieldSizeAtIsocentre / 2.0
+
+let private nominalFieldCorners =
+    let corner x y : IsocentreFramePoint = {
+        X = x
+        Y = y
+        Z = IsocentreFrame.isocentre.Z
+    }
+
+    [|
+        corner -nominalFieldGuideHalfWidth -nominalFieldGuideHalfWidth
+        corner nominalFieldGuideHalfWidth -nominalFieldGuideHalfWidth
+        corner nominalFieldGuideHalfWidth nominalFieldGuideHalfWidth
+        corner -nominalFieldGuideHalfWidth nominalFieldGuideHalfWidth
+    |]
+    |> Array.map ViewerDisplay.fromIsocentrePoint
+
+let private viewerDebugGeometry: GeometryViewer.DebugGeometry = {
+    Isocentre = IsocentreFrame.isocentre |> ViewerDisplay.fromIsocentrePoint
+    XJawReferences = viewerDisplayJawReferences X
+    YJawReferences = viewerDisplayJawReferences Y
+    MlcReferences = viewerDisplayMlcReferences
+    NominalFieldCorners = nominalFieldCorners
+}
 
 let private staticFieldSize (label: string) =
     Html.label [
@@ -144,7 +198,21 @@ let private viewerModeButton
         prop.text label
     ]
 
-let private viewerCard selectedMode dispatch =
+let private debugGeometryToggle showDebugGeometry dispatch =
+    Html.label [
+        prop.className "flex cursor-pointer items-center gap-2 whitespace-nowrap"
+        prop.children [
+            Html.span [ prop.className "text-sm font-medium"; prop.text "Debug geometry" ]
+            Html.input [
+                prop.type' "checkbox"
+                prop.className "toggle toggle-sm toggle-primary"
+                prop.isChecked showDebugGeometry
+                prop.onChange (fun enabled -> dispatch (SetDebugGeometry enabled))
+            ]
+        ]
+    ]
+
+let private viewerCard selectedMode showDebugGeometry dispatch =
     Html.section [
         prop.className "card overflow-hidden border border-base-300 bg-base-100 shadow-md"
         prop.children [
@@ -162,10 +230,16 @@ let private viewerCard selectedMode dispatch =
                                 ]
                             ]
                             Html.div [
-                                prop.className "join shrink-0"
+                                prop.className "flex shrink-0 items-center gap-4"
                                 prop.children [
-                                    viewerModeButton selectedMode GeometryViewer.ThreeD "3D" dispatch
-                                    viewerModeButton selectedMode GeometryViewer.BeamEyeView "BEV" dispatch
+                                    debugGeometryToggle showDebugGeometry dispatch
+                                    Html.div [
+                                        prop.className "join"
+                                        prop.children [
+                                            viewerModeButton selectedMode GeometryViewer.ThreeD "3D" dispatch
+                                            viewerModeButton selectedMode GeometryViewer.BeamEyeView "BEV" dispatch
+                                        ]
+                                    ]
                                 ]
                             ]
                         ]
@@ -177,7 +251,9 @@ let private viewerCard selectedMode dispatch =
                 prop.children [
                     GeometryViewer.View(
                         selectedMode,
+                        showDebugGeometry,
                         viewerDisplaySource,
+                        viewerDebugGeometry,
                         trueBeamJawsForViewer,
                         trueBeamMlcBanksForViewer
                     )
@@ -208,7 +284,7 @@ let view model dispatch =
 
                     Html.div [
                         prop.className "mt-4 grid items-start gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]"
-                        prop.children [ controlsCard; viewerCard model.ViewerMode dispatch ]
+                        prop.children [ controlsCard; viewerCard model.ViewerMode model.ShowDebugGeometry dispatch ]
                     ]
                 ]
             ]

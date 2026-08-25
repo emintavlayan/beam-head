@@ -17,7 +17,24 @@ const sceneGuides = {
 
 const initialCameraDistanceScale = 2.25;
 const viewerSolidAlpha = 0.72;
-const jawWireframeColor = [0.08, 0.12, 0.18, 1];
+const palette = {
+    xJaw: [0.05, 0.55, 0.58, viewerSolidAlpha],
+    yJaw: [0.88, 0.42, 0.12, viewerSolidAlpha],
+    mlc: [0.45, 0.25, 0.72, viewerSolidAlpha],
+    jawWireframe: [0.08, 0.12, 0.18, 1],
+    sourceMarker: [0.12, 0.22, 0.42, 1],
+    isocentreMarker: [0.88, 0.15, 0.45, 1],
+    nominalFieldFill: [1.0, 0.78, 0.08, 0.10],
+    nominalFieldOutline: [0.95, 0.65, 0.00, 1],
+    grid: [0, 0, 0, 1],
+    gridSub: [0, 0, 1, 0.5],
+    background: [0.96, 0.98, 0.98, 1],
+};
+const debugMarkerRadii = {
+    source: 8,
+    isocentre: 10,
+    componentReference: 4,
+};
 // Used only for duplicate edge keys; the retained vertex coordinates are unchanged.
 const edgeKeyPrecision = 1e6;
 
@@ -47,9 +64,7 @@ export function createJaw(
         : rotateX(-apertureFaceAngleRadians, jaw);
     jaw = translate([referenceX, referenceY, referenceZ], jaw);
 
-    const viewerColor = axis === "x"
-        ? [0.05, 0.55, 0.58, viewerSolidAlpha]
-        : [0.88, 0.42, 0.12, viewerSolidAlpha];
+    const viewerColor = axis === "x" ? palette.xJaw : palette.yJaw;
 
     return colorize(viewerColor, jaw);
 }
@@ -90,7 +105,7 @@ export function createMlcBank(
 
     bank = translate([referenceX, referenceY, referenceZ], bank);
 
-    return colorize([0.45, 0.25, 0.72, viewerSolidAlpha], bank);
+    return colorize(palette.mlc, bank);
 }
 
 export function downloadStl(fileName, geometries) {
@@ -124,6 +139,26 @@ const undirectedEdgeKey = (start, end) => {
         : `${endKey}|${startKey}`;
 };
 
+const lineEntity = (segments, color) => {
+    const positions = segments.flat();
+    // Required by drawLines; these renderer normals have no physical meaning.
+    const normals = positions.map(() => [0, 0, 1]);
+
+    return {
+        geometry: {
+            positions,
+            normals,
+            indices: positions.map((_, index) => index),
+            color,
+        },
+        visuals: {
+            drawCmd: "drawLines",
+            show: true,
+            transparent: color[3] < 1,
+        },
+    };
+};
+
 const jawWireframeEntity = jaw => {
     const uniqueEdges = new Map();
 
@@ -142,23 +177,75 @@ const jawWireframeEntity = jaw => {
         }
     });
 
-    const positions = Array.from(uniqueEdges.values()).flat();
-    // Required by drawLines; these renderer normals have no physical meaning.
-    const normals = positions.map(() => [0, 0, 1]);
+    return lineEntity(Array.from(uniqueEdges.values()), palette.jawWireframe);
+};
 
-    return {
-        geometry: {
-            positions,
-            normals,
-            indices: positions.map((_, index) => index),
-            color: jawWireframeColor,
-        },
-        visuals: {
-            drawCmd: "drawLines",
-            show: true,
-            transparent: false,
-        },
-    };
+const opaqueColor = color => [color[0], color[1], color[2], 1];
+
+const debugMarker = (point, radius, color) => colorize(
+    color,
+    translate(point, primitives.sphere({ radius })),
+);
+
+const nominalFieldPyramid = (source, corners) => colorize(
+    palette.nominalFieldFill,
+    primitives.polyhedron({
+        points: [source, ...corners],
+        faces: [
+            [0, 1, 2],
+            [0, 2, 3],
+            [0, 3, 4],
+            [0, 4, 1],
+            [1, 4, 3, 2],
+        ],
+        orientation: "outward",
+    }),
+);
+
+const nominalFieldOutlineEntity = corners => lineEntity(
+    corners.map((corner, index) => [corner, corners[(index + 1) % corners.length]]),
+    palette.nominalFieldOutline,
+);
+
+const debugGeometryEntities = (
+    solidOptions,
+    isBeamEyeView,
+    source,
+    isocentre,
+    xJawReferences,
+    yJawReferences,
+    mlcReferences,
+    nominalFieldCorners,
+) => {
+    const markerSolids = [
+        ...(!isBeamEyeView
+            ? [debugMarker(source, debugMarkerRadii.source, palette.sourceMarker)]
+            : []),
+        debugMarker(isocentre, debugMarkerRadii.isocentre, palette.isocentreMarker),
+        ...xJawReferences.map(point => debugMarker(
+            point,
+            debugMarkerRadii.componentReference,
+            opaqueColor(palette.xJaw),
+        )),
+        ...yJawReferences.map(point => debugMarker(
+            point,
+            debugMarkerRadii.componentReference,
+            opaqueColor(palette.yJaw),
+        )),
+        ...mlcReferences.map(point => debugMarker(
+            point,
+            debugMarkerRadii.componentReference,
+            opaqueColor(palette.mlc),
+        )),
+    ];
+    const debugSolids = isBeamEyeView
+        ? markerSolids
+        : [nominalFieldPyramid(source, nominalFieldCorners), ...markerSolids];
+
+    return [
+        ...entitiesFromSolids(solidOptions, ...debugSolids),
+        nominalFieldOutlineEntity(nominalFieldCorners),
+    ];
 };
 
 export function startViewer(
@@ -166,9 +253,15 @@ export function startViewer(
     jawGeometry,
     mlcGeometry,
     viewerMode,
+    showDebugGeometry,
     sourceX,
     sourceY,
     sourceZ,
+    isocentre,
+    xJawReferences,
+    yJawReferences,
+    mlcReferences,
+    nominalFieldCorners,
 ) {
     const perspectiveCamera = cameras.perspective;
     const orbitControls = controls.orbit;
@@ -218,6 +311,18 @@ export function startViewer(
             ...entitiesFromSolids(solidOptions, mlcGeometry),
         ]
         : entitiesFromSolids(solidOptions, jawGeometry, mlcGeometry);
+    const debugEntities = showDebugGeometry
+        ? debugGeometryEntities(
+            solidOptions,
+            isBeamEyeView,
+            [sourceX, sourceY, sourceZ],
+            Array.from(isocentre),
+            xJawReferences.map(point => Array.from(point)),
+            yJawReferences.map(point => Array.from(point)),
+            mlcReferences.map(point => Array.from(point)),
+            nominalFieldCorners.map(point => Array.from(point)),
+        )
+        : [];
     const renderOptions = {
         camera,
         drawCommands: {
@@ -231,8 +336,8 @@ export function startViewer(
                 visuals: {
                     drawCmd: "drawGrid",
                     show: true,
-                    color: [0, 0, 0, 1],
-                    subColor: [0, 0, 1, 0.5],
+                    color: palette.grid,
+                    subColor: palette.gridSub,
                     fadeOut: false,
                     transparent: true,
                 },
@@ -244,9 +349,10 @@ export function startViewer(
                 size: sceneGuides.axisSize,
             },
             ...geometryEntities,
+            ...debugEntities,
         ],
         rendering: {
-            background: [0.96, 0.98, 0.98, 1],
+            background: palette.background,
         },
     };
 

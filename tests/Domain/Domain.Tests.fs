@@ -67,8 +67,11 @@ module TrueBeamJawTests =
         Assert.Equal(1000.0<mm>, displaySource.Z)
 
     [<Fact>]
-    let ``nominal jaw setting has plus and minus 200 millimetre edges at isocentre`` () =
+    let ``nominal field guide half width is derived from the 400 millimetre clinical field`` () =
+        let nominalFieldGuideHalfWidth = TrueBeamJaws.fieldSizeAtIsocentre / 2.0
+
         Assert.Equal(400.0<mm>, TrueBeamJaws.fieldSizeAtIsocentre)
+        Assert.Equal(200.0<mm>, nominalFieldGuideHalfWidth)
         Assert.Equal(200.0<mm>, TrueBeamJaws.nominalFieldEdgeAtIsocentre)
         Assert.Equal(-200.0<mm>, -TrueBeamJaws.nominalFieldEdgeAtIsocentre)
 
