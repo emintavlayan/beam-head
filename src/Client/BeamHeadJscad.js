@@ -5,6 +5,7 @@ import stlSerializer from "@jscad/stl-serializer";
 const { primitives } = modeling;
 const { colorize } = modeling.colors;
 const { extrudeLinear } = modeling.extrusions;
+const { geom3 } = modeling.geometries;
 const { mirrorX, mirrorZ, rotateX, rotateY, translate } = modeling.transforms;
 const { cameras, controls, drawCommands, entitiesFromSolids, prepareRender } = renderer;
 const { serialize } = stlSerializer;
@@ -16,6 +17,9 @@ const sceneGuides = {
 };
 
 const initialCameraDistanceScale = 2.25;
+const jawWireframeColor = [0.08, 0.12, 0.18, 1];
+// Used only for duplicate edge keys; the retained vertex coordinates are unchanged.
+const edgeKeyPrecision = 1e6;
 
 export function createJaw(
     axis,
@@ -94,7 +98,62 @@ export function createViewerDisplay(geometries) {
     return mirrorZ(...geometries);
 }
 
-export function startViewer(container, geometry, viewerMode, sourceX, sourceY, sourceZ) {
+const coordinateKey = vertex => vertex
+    .map(coordinate => Math.round(coordinate * edgeKeyPrecision))
+    .join(",");
+
+const undirectedEdgeKey = (start, end) => {
+    const startKey = coordinateKey(start);
+    const endKey = coordinateKey(end);
+
+    return startKey < endKey
+        ? `${startKey}|${endKey}`
+        : `${endKey}|${startKey}`;
+};
+
+const jawWireframeEntity = jaw => {
+    const uniqueEdges = new Map();
+
+    // toPolygons resolves the jaw's final translation, rotation and display mirror.
+    geom3.toPolygons(jaw).forEach((polygon) => {
+        const vertices = polygon.vertices;
+
+        for (let index = 0; index < vertices.length; index += 1) {
+            const start = vertices[index];
+            const end = vertices[(index + 1) % vertices.length];
+            const key = undirectedEdgeKey(start, end);
+
+            if (!uniqueEdges.has(key)) {
+                uniqueEdges.set(key, [start, end]);
+            }
+        }
+    });
+
+    const positions = Array.from(uniqueEdges.values()).flat();
+
+    return {
+        geometry: {
+            positions,
+            indices: positions.map((_, index) => index),
+            color: jawWireframeColor,
+        },
+        visuals: {
+            drawCmd: "drawLines",
+            show: true,
+            transparent: false,
+        },
+    };
+};
+
+export function startViewer(
+    container,
+    jawGeometry,
+    mlcGeometry,
+    viewerMode,
+    sourceX,
+    sourceY,
+    sourceZ,
+) {
     const perspectiveCamera = cameras.perspective;
     const orbitControls = controls.orbit;
     const isBeamEyeView = viewerMode === "beamEyeView";
@@ -135,11 +194,19 @@ export function startViewer(container, geometry, viewerMode, sourceX, sourceY, s
     const render = prepareRender({
         glOptions: { container },
     });
+    const solidOptions = { smoothNormals: false };
+    const geometryEntities = isBeamEyeView
+        ? [
+            ...jawGeometry.map(jawWireframeEntity),
+            ...entitiesFromSolids(solidOptions, mlcGeometry),
+        ]
+        : entitiesFromSolids(solidOptions, jawGeometry, mlcGeometry);
     const renderOptions = {
         camera,
         drawCommands: {
             drawAxis: drawCommands.drawAxis,
             drawGrid: drawCommands.drawGrid,
+            drawLines: drawCommands.drawLines,
             drawMesh: drawCommands.drawMesh,
         },
         entities: [
@@ -159,10 +226,7 @@ export function startViewer(container, geometry, viewerMode, sourceX, sourceY, s
                 visuals: { drawCmd: "drawAxis", show: true },
                 size: sceneGuides.axisSize,
             },
-            ...entitiesFromSolids(
-                { smoothNormals: false },
-                geometry,
-            ),
+            ...geometryEntities,
         ],
         rendering: {
             background: [0.96, 0.98, 0.98, 1],

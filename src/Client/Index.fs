@@ -19,20 +19,24 @@ let update msg model =
     match msg with
     | SetViewerMode viewerMode -> { model with ViewerMode = viewerMode }
 
-let private trueBeamJaws =
+let private trueBeamJawsForExport =
     TrueBeamJaws.placements
     |> List.map IsocentreFrame.fromSourceJawPlacement
     |> JscadGeometry.createJaws
 
-let private trueBeamMlcBanks =
+let private trueBeamMlcBanksForExport =
     TrueBeamMlc.placements
     |> List.map IsocentreFrame.fromSourceMlcBankPlacement
     |> JscadGeometry.createMlcBanks
 
-let private trueBeamGeometryForExport = Array.append trueBeamJaws trueBeamMlcBanks
+let private trueBeamGeometryForExport =
+    Array.append trueBeamJawsForExport trueBeamMlcBanksForExport
 
-let private trueBeamGeometryForViewer =
-    JscadGeometry.createViewerDisplay trueBeamGeometryForExport
+let private trueBeamJawsForViewer =
+    JscadGeometry.createViewerDisplay trueBeamJawsForExport
+
+let private trueBeamMlcBanksForViewer =
+    JscadGeometry.createViewerDisplay trueBeamMlcBanksForExport
 
 let private viewerDisplaySource =
     IsocentreFrame.source |> ViewerDisplay.fromIsocentrePoint
@@ -171,7 +175,12 @@ let private viewerCard selectedMode dispatch =
             Html.div [
                 prop.className "p-3"
                 prop.children [
-                    GeometryViewer.View(selectedMode, viewerDisplaySource, trueBeamGeometryForViewer)
+                    GeometryViewer.View(
+                        selectedMode,
+                        viewerDisplaySource,
+                        trueBeamJawsForViewer,
+                        trueBeamMlcBanksForViewer
+                    )
                 ]
             ]
         ]

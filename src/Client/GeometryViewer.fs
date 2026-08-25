@@ -8,7 +8,8 @@ open Feliz
 [<Import("startViewer", "./BeamHeadJscad.js")>]
 let private startJscadViewer
     (container: HTMLElement)
-    (geometry: obj array)
+    (jawGeometry: obj array)
+    (mlcGeometry: obj array)
     (viewerMode: string)
     (sourceX: float)
     (sourceY: float)
@@ -28,7 +29,7 @@ let private viewerModeName mode =
 
 /// Renders JSCAD geometry using either the interactive 3D camera or fixed Beam's Eye View.
 [<ReactComponent>]
-let View (mode: ViewerMode, displaySource: ViewerDisplayPoint, geometry: obj array) =
+let View (mode: ViewerMode, displaySource: ViewerDisplayPoint, jawGeometry: obj array, mlcGeometry: obj array) =
     let container = React.useElementRef ()
 
     React.useEffect (
@@ -38,7 +39,8 @@ let View (mode: ViewerMode, displaySource: ViewerDisplayPoint, geometry: obj arr
                 React.createDisposable (
                     startJscadViewer
                         element
-                        geometry
+                        jawGeometry
+                        mlcGeometry
                         (viewerModeName mode)
                         (float displaySource.X)
                         (float displaySource.Y)

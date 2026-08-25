@@ -411,3 +411,14 @@ Evidence used for today's jaw decisions
   - The previous implementation incorrectly connected +/-1.5 mm at the source directly to +/-200 mm at isocentre.
   - For the current TSEBT configuration, the retracted MLC remains at +/-203.6 mm, 2.1 mm outside the physical jaw edge.
   - Evidence: Lloyd PhD 2017, Chapter 6 jaw-model comparison and TrueBeam Monte Carlo Data Package discussion.
+
+2026-08-25
+
+08:50 - Made jaw wireframe the default BEV presentation
+  - BEV camera geometry was already validated and remains unchanged.
+  - A temporary zero-source-focus test confirmed that the apparent enlarged jaw silhouette is a perspective consequence of the non-zero 3 x 3 mm jaw focus rather than a BEV camera error.
+  - Solid jaws obscure the downstream MLC and make the focused aperture faces difficult to inspect from the source.
+  - Three-dimensional mode therefore keeps the normal solid jaw rendering while BEV renders the same four jaw solids as wireframe edges.
+  - Wireframe edges are extracted from the already transformed JSCAD jaw solids rather than recalculating jaw geometry.
+  - MLC banks remain solid in BEV.
+  - Wireframe is viewer-only and is never included in STL export.
