@@ -454,3 +454,16 @@ Evidence used for today's jaw decisions
   - These values are not claimed as vendor-exact TrueBeam dimensions.
   - Their purpose is to provide a physically reasonable tungsten envelope that comfortably covers the clinically accessible aperture without introducing unsupported mechanical detail.
   - Because outer jaw-body dimensions can influence scattered radiation, these assumptions should be stated explicitly in any scientific use of the model and can later be included in a geometry-sensitivity study.
+
+14:24 - Based the simplified MLC travel-axis body depth on published Millennium leaf length
+  - The previous 106.89 mm rear-body depth came from the reconstructed profile and did not have a strong independent literature basis.
+  - Published descriptions of the Millennium 120 report a leaf length of approximately 15 cm at isocentre.
+  - BeamHead therefore adopts 150 mm at isocentre as the simplified leaf-length quantity in the direction of leaf travel.
+  - Because BeamHead constructs geometry in the physical MLC plane, the 150 mm projected length is converted using the MLC midplane distance of 509 mm from the source.
+  - This gives a physical simplified body depth of 76.35 mm at the MLC midplane.
+  - The 76.35 mm value is derived rather than independently specified.
+  - This does not claim to reproduce the complete mechanical leaf, carriage, drive screw or shielding assembly.
+  - The purpose is to give the simplified two-bank TSEBT model a traceable, literature-supported amount of tungsten behind the rounded leaf tip instead of an arbitrary rear extent.
+  - References:
+    - Ugurlu BT, Temelli O. The impact of the field width on VMAT plan quality and the assessment of half field method. J Appl Clin Med Phys. 2020;21(3):115-122. doi:10.1002/acm2.12834. Reports Millennium MLC leaf length as 15 cm at isocentre.
+    - Hadad K, Alipour H. Evaluation of MLC Thickness and Composite Effects on Collimation Parameters using EGSnrc and IAEA Phase Space Data. J Biomed Phys Eng. 2020;10(1):59-64. doi:10.31661/jbpe.v0i0.658. Table 1 reports Millennium 120 leaf length as 15 cm.

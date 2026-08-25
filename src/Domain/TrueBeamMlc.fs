@@ -52,8 +52,12 @@ module TrueBeamMlc =
     /// Derives the physical Y half-span of the simplified bank envelope at a source-frame Z plane.
     let bankHalfSpanAtPlane planeZ = bankSpanAtPlane planeZ / 2.0
 
-    /// A modelling approximation from the reconstructed Excel closure, providing tungsten behind the scattering face rather than a vendor leaf length.
-    let simplifiedBodyDepthBehindTip = 106.89<mm>
+    /// Literature-supported Millennium leaf length projected at isocentre.
+    let leafLengthAtIsocentre = 150.0<mm>
+
+    /// Simplified physical body depth behind the tip at the MLC midplane.
+    let simplifiedBodyDepthBehindTip =
+        projectFromIsocentreToPlane leafLengthAtIsocentre mlcMidplaneZ
 
     /// The reconstructed local X-Z scattering-face profile, from tip into the positive bank body.
     let localProfile = [

@@ -329,11 +329,16 @@ module TrueBeamMlcTests =
         Assert.Equal(31, TrueBeamMlc.localProfile.Length)
 
     [<Fact>]
-    let ``simplified body depth behind tip remains an explicit 106 point 89 millimetre approximation`` () =
+    let ``simplified body depth is derived from the projected published leaf length`` () =
         let profileRearExtent = TrueBeamMlc.localProfile |> List.maxBy _.X |> _.X
 
-        Assert.Equal(106.89<mm>, TrueBeamMlc.simplifiedBodyDepthBehindTip)
-        Assert.Equal(106.89<mm>, profileRearExtent)
+        let projectedBackToIsocentre =
+            TrueBeamMlc.projectFromPlaneToIsocentre TrueBeamMlc.simplifiedBodyDepthBehindTip TrueBeamMlc.mlcMidplaneZ
+
+        Assert.Equal(150.0<mm>, TrueBeamMlc.leafLengthAtIsocentre)
+        assertClose 76.35<mm> TrueBeamMlc.simplifiedBodyDepthBehindTip
+        assertClose 76.35<mm> profileRearExtent
+        assertClose 150.0<mm> projectedBackToIsocentre
 
     [<Fact>]
     let ``profile rear points use the body depth approximation and half thickness`` () =
