@@ -5,7 +5,7 @@ open Xunit
 
 module TrueBeamJawTests =
     let private placement axis side =
-        TrueBeamJaws.placements
+        TrueBeam.jaws
         |> List.find (fun placement -> placement.Axis = axis && placement.Side = side)
 
     let private assertClose (expected: float<mm>) (actual: float<mm>) =
@@ -68,24 +68,23 @@ module TrueBeamJawTests =
 
     [<Fact>]
     let ``nominal jaw setting has plus and minus 200 millimetre edges at isocentre`` () =
-        Assert.Equal(400.0<mm>, TrueBeamGeometry.fieldSizeAtIsocentre)
-        Assert.Equal(200.0<mm>, TrueBeamGeometry.nominalFieldEdgeAtIsocentre)
-        Assert.Equal(-200.0<mm>, -TrueBeamGeometry.nominalFieldEdgeAtIsocentre)
+        Assert.Equal(400.0<mm>, TrueBeamJaws.fieldSizeAtIsocentre)
+        Assert.Equal(200.0<mm>, TrueBeamJaws.nominalFieldEdgeAtIsocentre)
+        Assert.Equal(-200.0<mm>, -TrueBeamJaws.nominalFieldEdgeAtIsocentre)
 
     [<Fact>]
     let ``source focus has plus and minus 1 point 5 millimetre edges`` () =
-        Assert.Equal(1.5<mm>, TrueBeamGeometry.sourcePlaneHalfFocus)
+        Assert.Equal(1.5<mm>, TrueBeamJaws.sourcePlaneHalfFocus)
         Assert.Equal(1.5<mm>, (TrueBeamJaws.apertureLine Positive).SourcePlaneEdge)
         Assert.Equal(-1.5<mm>, (TrueBeamJaws.apertureLine Negative).SourcePlaneEdge)
 
     [<Fact>]
     let ``physical jaw aperture has plus and minus 201 point 5 millimetre edges at isocentre`` () =
-        Assert.Equal(201.5<mm>, TrueBeamGeometry.jawPhysicalEdgeAtIsocentre)
+        Assert.Equal(201.5<mm>, TrueBeamJaws.jawPhysicalEdgeAtIsocentre)
 
         Assert.Equal(
-            TrueBeamGeometry.nominalFieldEdgeAtIsocentre
-            + TrueBeamGeometry.sourcePlaneHalfFocus,
-            TrueBeamGeometry.jawPhysicalEdgeAtIsocentre
+            TrueBeamJaws.nominalFieldEdgeAtIsocentre + TrueBeamJaws.sourcePlaneHalfFocus,
+            TrueBeamJaws.jawPhysicalEdgeAtIsocentre
         )
 
         Assert.Equal(201.5<mm>, (TrueBeamJaws.apertureLine Positive).IsocentrePlaneEdge)
@@ -93,32 +92,32 @@ module TrueBeamJawTests =
 
     [<Fact>]
     let ``nominal 400 millimetre setting produces 403 millimetre physical jaw separation`` () =
-        Assert.Equal(403.0<mm>, TrueBeamGeometry.jawPhysicalSeparationAtIsocentre)
+        Assert.Equal(403.0<mm>, TrueBeamJaws.jawPhysicalSeparationAtIsocentre)
 
     [<Fact>]
     let ``jaw physical thickness is exactly 78 millimetres`` () =
-        Assert.Equal(78.0<mm>, TrueBeamGeometry.jawThickness)
+        Assert.Equal(78.0<mm>, TrueBeamJaws.jawThickness)
 
-        TrueBeamJaws.placements
+        TrueBeam.jaws
         |> List.iter (fun placement -> Assert.Equal(78.0<mm>, placement.BodyDimensions.Thickness))
 
     [<Fact>]
     let ``simplified jaw cross axis extent is exactly 200 millimetres`` () =
-        Assert.Equal(200.0<mm>, TrueBeamGeometry.simplifiedJawCrossAxisExtent)
+        Assert.Equal(200.0<mm>, TrueBeamJaws.simplifiedJawCrossAxisExtent)
 
-        TrueBeamJaws.placements
+        TrueBeam.jaws
         |> List.iter (fun placement -> Assert.Equal(200.0<mm>, placement.BodyDimensions.CrossAxisExtent))
 
     [<Fact>]
     let ``simplified jaw closing axis extent is exactly 80 millimetres`` () =
-        Assert.Equal(80.0<mm>, TrueBeamGeometry.simplifiedJawClosingAxisExtent)
+        Assert.Equal(80.0<mm>, TrueBeamJaws.simplifiedJawClosingAxisExtent)
 
-        TrueBeamJaws.placements
+        TrueBeam.jaws
         |> List.iter (fun placement -> Assert.Equal(80.0<mm>, placement.BodyDimensions.ClosingAxisExtent))
 
     [<Fact>]
     let ``X jaw reference Z is exactly 406 millimetres`` () =
-        Assert.Equal(406.0<mm>, TrueBeamGeometry.xJawReferenceZ)
+        Assert.Equal(406.0<mm>, TrueBeamJaws.xJawReferenceZ)
         Assert.Equal(406.0<mm>, (placement X Negative).ApertureFaceMidpoint.Z)
         Assert.Equal(406.0<mm>, (placement X Positive).ApertureFaceMidpoint.Z)
 
@@ -130,16 +129,16 @@ module TrueBeamJawTests =
 
     [<Fact>]
     let ``X jaw midplane and half thickness give supported upstream and downstream surfaces`` () =
-        let halfThickness = TrueBeamGeometry.jawThickness / 2.0
-        let upstreamSurface = TrueBeamGeometry.xJawReferenceZ - halfThickness
-        let downstreamSurface = TrueBeamGeometry.xJawReferenceZ + halfThickness
+        let halfThickness = TrueBeamJaws.jawThickness / 2.0
+        let upstreamSurface = TrueBeamJaws.xJawReferenceZ - halfThickness
+        let downstreamSurface = TrueBeamJaws.xJawReferenceZ + halfThickness
 
         assertClose 367.0<mm> upstreamSurface
         assertClose 445.0<mm> downstreamSurface
 
     [<Fact>]
     let ``Y jaw aperture face midpoint radius is exactly 319 millimetres`` () =
-        Assert.Equal(319.0<mm>, TrueBeamGeometry.yJawReferenceRadius)
+        Assert.Equal(319.0<mm>, TrueBeamJaws.yJawReferenceRadius)
 
         for side in [ Negative; Positive ] do
             let point = (placement Y side).ApertureFaceMidpoint
@@ -149,9 +148,9 @@ module TrueBeamJawTests =
     [<Fact>]
     let ``Y jaw midpoint radius and half thickness give supported upstream trajectory radius`` () =
         let upstreamTrajectoryRadius =
-            TrueBeamGeometry.yJawReferenceRadius - TrueBeamGeometry.jawThickness / 2.0
+            TrueBeamJaws.yJawReferenceRadius - TrueBeamJaws.jawThickness / 2.0
 
-        Assert.Equal(280.0<mm>, TrueBeamGeometry.yJawUpstreamTrajectoryRadius)
+        Assert.Equal(280.0<mm>, TrueBeamJaws.yJawUpstreamTrajectoryRadius)
         assertClose 280.0<mm> upstreamTrajectoryRadius
 
     [<Fact>]
@@ -202,7 +201,7 @@ module TrueBeamJawTests =
 
     [<Fact>]
     let ``aperture faces project to source focus and corrected physical isocentre edges`` () =
-        for jaw in TrueBeamJaws.placements do
+        for jaw in TrueBeam.jaws do
             let referenceCoordinate =
                 match jaw.Axis with
                 | X -> jaw.ApertureFaceMidpoint.X
@@ -214,8 +213,8 @@ module TrueBeamJawTests =
 
             let expectedSourceEdge, expectedPhysicalEdge =
                 match jaw.Side with
-                | Negative -> -TrueBeamGeometry.sourcePlaneHalfFocus, -TrueBeamGeometry.jawPhysicalEdgeAtIsocentre
-                | Positive -> TrueBeamGeometry.sourcePlaneHalfFocus, TrueBeamGeometry.jawPhysicalEdgeAtIsocentre
+                | Negative -> -TrueBeamJaws.sourcePlaneHalfFocus, -TrueBeamJaws.jawPhysicalEdgeAtIsocentre
+                | Positive -> TrueBeamJaws.sourcePlaneHalfFocus, TrueBeamJaws.jawPhysicalEdgeAtIsocentre
 
             assertClose expectedSourceEdge (projectedCoordinate TrueBeamGeometry.sourcePlaneZ)
             assertClose expectedPhysicalEdge (projectedCoordinate TrueBeamGeometry.isocentreZ)
@@ -224,7 +223,7 @@ module TrueBeamJawTests =
     let ``domain jaw geometry retains millimetre units through the rendering boundary input`` () =
         let requiresMillimetres (_: float<mm>) = ()
 
-        for jaw in TrueBeamJaws.placements do
+        for jaw in TrueBeam.jaws do
             requiresMillimetres jaw.ApertureFaceMidpoint.X
             requiresMillimetres jaw.ApertureFaceMidpoint.Y
             requiresMillimetres jaw.ApertureFaceMidpoint.Z
@@ -234,7 +233,7 @@ module TrueBeamJawTests =
 
 module TrueBeamMlcTests =
     let private placement side =
-        TrueBeamMlc.placements |> List.find (fun placement -> placement.Side = side)
+        TrueBeam.mlcBanks |> List.find (fun placement -> placement.Side = side)
 
     let private assertClose (expected: float<mm>) (actual: float<mm>) =
         Assert.InRange(actual, expected - 0.000001<mm>, expected + 0.000001<mm>)
@@ -243,7 +242,7 @@ module TrueBeamMlcTests =
     let ``MLC midplane is 509 millimetres from source`` () =
         Assert.Equal(509.0<mm>, TrueBeamMlc.mlcMidplaneZ)
 
-        TrueBeamMlc.placements
+        TrueBeam.mlcBanks
         |> List.iter (fun bank -> Assert.Equal(509.0<mm>, bank.TipReference.Z))
 
     [<Fact>]
@@ -291,7 +290,7 @@ module TrueBeamMlcTests =
 
     [<Fact>]
     let ``MLC placements transform to minus 491 millimetres in isocentre frame`` () =
-        for bank in TrueBeamMlc.placements do
+        for bank in TrueBeam.mlcBanks do
             let transformed = IsocentreFrame.fromSourceMlcBankPlacement bank
 
             Assert.Equal(-491.0<mm>, transformed.TipReference.Z)
@@ -342,7 +341,7 @@ module TrueBeamMlcTests =
 
     [<Fact>]
     let ``bank envelope uses a source-projected Y half-span at every X-Z profile point`` () =
-        for bank in TrueBeamMlc.placements do
+        for bank in TrueBeam.mlcBanks do
             Assert.Equal(TrueBeamMlc.localProfile.Length, bank.EnvelopeProfile.Length)
 
             (TrueBeamMlc.localProfile, bank.EnvelopeProfile)
@@ -396,10 +395,9 @@ module TrueBeamMlcTests =
     [<Fact>]
     let ``retracted MLC tips are 2 point 1 millimetres outside the physical jaw edges`` () =
         let clearance =
-            TrueBeamMlc.retractedTipAtIsocentre
-            - TrueBeamGeometry.jawPhysicalEdgeAtIsocentre
+            TrueBeamMlc.retractedTipAtIsocentre - TrueBeamJaws.jawPhysicalEdgeAtIsocentre
 
-        Assert.Equal(201.5<mm>, TrueBeamGeometry.jawPhysicalEdgeAtIsocentre)
+        Assert.Equal(201.5<mm>, TrueBeamJaws.jawPhysicalEdgeAtIsocentre)
         Assert.Equal(203.6<mm>, TrueBeamMlc.retractedTipAtIsocentre)
         assertClose 2.1<mm> clearance
 
@@ -418,7 +416,7 @@ module TrueBeamMlcTests =
     let ``domain MLC geometry retains millimetre units through the rendering boundary input`` () =
         let requiresMillimetres (_: float<mm>) = ()
 
-        for bank in TrueBeamMlc.placements do
+        for bank in TrueBeam.mlcBanks do
             requiresMillimetres bank.TipReference.X
             requiresMillimetres bank.TipReference.Y
             requiresMillimetres bank.TipReference.Z

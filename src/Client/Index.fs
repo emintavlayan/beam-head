@@ -20,12 +20,12 @@ let update msg model =
     | SetViewerMode viewerMode -> { model with ViewerMode = viewerMode }
 
 let private trueBeamJawsForExport =
-    TrueBeamJaws.placements
+    TrueBeam.jaws
     |> List.map IsocentreFrame.fromSourceJawPlacement
     |> JscadGeometry.createJaws
 
 let private trueBeamMlcBanksForExport =
-    TrueBeamMlc.placements
+    TrueBeam.mlcBanks
     |> List.map IsocentreFrame.fromSourceMlcBankPlacement
     |> JscadGeometry.createMlcBanks
 
