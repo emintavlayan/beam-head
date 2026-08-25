@@ -9,14 +9,23 @@ module TrueBeamMlc =
     /// The fully retracted positive tip setting projected at isocentre.
     let retractedTipAtIsocentre = 203.6<mm>
 
-    /// The total Millennium bank span perpendicular to leaf travel, projected at isocentre.
-    let projectedBankSpanAtIsocentre = 400.0<mm>
+    /// The nominal Millennium leaf coverage perpendicular to leaf travel at isocentre.
+    let nominalLeafCoverageAtIsocentre = 400.0<mm>
+
+    /// The simplified physical bank envelope projected at isocentre, modelled 5 mm beyond the nominal field on each side.
+    let simplifiedBankEnvelopeAtIsocentre = 410.0<mm>
 
     /// The supported physical MLC thickness along the beam axis.
     let thickness = 67.0<mm>
 
     /// Half of the supported physical MLC thickness.
     let halfThickness = thickness / 2.0
+
+    /// The upstream MLC surface distance downstream from the source.
+    let mlcUpstreamZ = mlcMidplaneZ - halfThickness
+
+    /// The downstream MLC surface distance downstream from the source.
+    let mlcDownstreamZ = mlcMidplaneZ + halfThickness
 
     /// The published radius of the rounded Millennium leaf tip.
     let tipRadius = 80.0<mm>
@@ -36,9 +45,12 @@ module TrueBeamMlc =
     let tipReferenceXAtMlcPlane =
         projectFromIsocentreToPlane retractedTipAtIsocentre mlcMidplaneZ
 
-    /// The derived physical span of the simplified bank envelope at the MLC plane.
-    let bankSpanAtMlcPlane =
-        projectFromIsocentreToPlane projectedBankSpanAtIsocentre mlcMidplaneZ
+    /// Derives the physical Y span of the simplified bank envelope at a source-frame Z plane.
+    let bankSpanAtPlane planeZ =
+        projectFromIsocentreToPlane simplifiedBankEnvelopeAtIsocentre planeZ
+
+    /// Derives the physical Y half-span of the simplified bank envelope at a source-frame Z plane.
+    let bankHalfSpanAtPlane planeZ = bankSpanAtPlane planeZ / 2.0
 
     /// A modelling approximation from the reconstructed Excel closure, providing tungsten behind the scattering face rather than a vendor leaf length.
     let simplifiedBodyDepthBehindTip = 106.89<mm>
@@ -84,6 +96,15 @@ module TrueBeamMlc =
         { X = 9.18152<mm>; Z = halfThickness }
     ]
 
+    /// The local bank profile with its Y half-span derived from each point's source-frame Z.
+    let localEnvelopeProfile =
+        localProfile
+        |> List.map (fun point -> {
+            X = point.X
+            Z = point.Z
+            HalfSpan = bankHalfSpanAtPlane (mlcMidplaneZ + point.Z)
+        })
+
     let private placement side tipReferenceX : SourceFrameMlcBankPlacement = {
         Side = side
         TipReference = {
@@ -91,8 +112,7 @@ module TrueBeamMlc =
             Y = 0.0<mm>
             Z = mlcMidplaneZ
         }
-        LocalProfile = localProfile
-        BankSpan = bankSpanAtMlcPlane
+        EnvelopeProfile = localEnvelopeProfile
     }
 
     /// The final source-frame placements of the opposing, fully retracted MLC bank envelopes.

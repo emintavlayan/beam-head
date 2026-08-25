@@ -4,8 +4,7 @@ import stlSerializer from "@jscad/stl-serializer";
 
 const { primitives } = modeling;
 const { colorize } = modeling.colors;
-const { extrudeLinear } = modeling.extrusions;
-const { geom3 } = modeling.geometries;
+const { geom3, poly3 } = modeling.geometries;
 const { mirrorX, mirrorZ, rotateX, rotateY, translate } = modeling.transforms;
 const { cameras, controls, drawCommands, entitiesFromSolids, prepareRender } = renderer;
 const { serialize } = stlSerializer;
@@ -17,6 +16,7 @@ const sceneGuides = {
 };
 
 const initialCameraDistanceScale = 2.25;
+const viewerSolidAlpha = 0.72;
 const jawWireframeColor = [0.08, 0.12, 0.18, 1];
 // Used only for duplicate edge keys; the retained vertex coordinates are unchanged.
 const edgeKeyPrecision = 1e6;
@@ -48,28 +48,41 @@ export function createJaw(
     jaw = translate([referenceX, referenceY, referenceZ], jaw);
 
     const viewerColor = axis === "x"
-        ? [0.05, 0.55, 0.58, 1]
-        : [0.88, 0.42, 0.12, 1];
+        ? [0.05, 0.55, 0.58, viewerSolidAlpha]
+        : [0.88, 0.42, 0.12, viewerSolidAlpha];
 
     return colorize(viewerColor, jaw);
 }
 
 export function createMlcBank(
     side,
-    bankSpan,
     referenceX,
     referenceY,
     referenceZ,
     profilePoints,
 ) {
-    const bankProfile = primitives.polygon({
-        points: profilePoints,
-        orientation: "clockwise",
+    const negativeYVertices = profilePoints.map(
+        ([x, z, halfSpan]) => [x, -halfSpan, z],
+    );
+    const positiveYVertices = profilePoints.map(
+        ([x, z, halfSpan]) => [x, halfSpan, z],
+    );
+    const sidePolygons = profilePoints.map((_, index) => {
+        const nextIndex = (index + 1) % profilePoints.length;
+
+        return poly3.create([
+            negativeYVertices[index],
+            negativeYVertices[nextIndex],
+            positiveYVertices[nextIndex],
+            positiveYVertices[index],
+        ]);
     });
 
-    let bank = extrudeLinear({ height: bankSpan }, bankProfile);
-    bank = translate([0, 0, -bankSpan / 2], bank);
-    bank = rotateX(Math.PI / 2, bank);
+    let bank = geom3.create([
+        poly3.create([...negativeYVertices].reverse()),
+        poly3.create(positiveYVertices),
+        ...sidePolygons,
+    ]);
 
     if (side === "negative") {
         bank = mirrorX(bank);
@@ -77,7 +90,7 @@ export function createMlcBank(
 
     bank = translate([referenceX, referenceY, referenceZ], bank);
 
-    return colorize([0.45, 0.25, 0.72, 1], bank);
+    return colorize([0.45, 0.25, 0.72, viewerSolidAlpha], bank);
 }
 
 export function downloadStl(fileName, geometries) {

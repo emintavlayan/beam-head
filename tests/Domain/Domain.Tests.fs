@@ -251,8 +251,9 @@ module TrueBeamMlcTests =
         Assert.Equal(203.6<mm>, TrueBeamMlc.retractedTipAtIsocentre)
 
     [<Fact>]
-    let ``projected Millennium bank span is 400 millimetres at isocentre`` () =
-        Assert.Equal(400.0<mm>, TrueBeamMlc.projectedBankSpanAtIsocentre)
+    let ``nominal leaf coverage and simplified bank envelope remain separate`` () =
+        Assert.Equal(400.0<mm>, TrueBeamMlc.nominalLeafCoverageAtIsocentre)
+        Assert.Equal(410.0<mm>, TrueBeamMlc.simplifiedBankEnvelopeAtIsocentre)
 
     [<Fact>]
     let ``tip reference at MLC plane is derived from its isocentre setting`` () =
@@ -263,12 +264,30 @@ module TrueBeamMlcTests =
         assertClose 203.6<mm> projectedBackToIsocentre
 
     [<Fact>]
-    let ``physical bank span at MLC plane is derived from its projected span`` () =
-        let projectedBackToIsocentre =
-            TrueBeamMlc.projectFromPlaneToIsocentre TrueBeamMlc.bankSpanAtMlcPlane TrueBeamMlc.mlcMidplaneZ
+    let ``bank span follows source projection through the MLC thickness`` () =
+        let expectedSpans = [
+            TrueBeamMlc.mlcUpstreamZ, 194.955<mm>
+            TrueBeamMlc.mlcMidplaneZ, 208.690<mm>
+            TrueBeamMlc.mlcDownstreamZ, 222.425<mm>
+        ]
 
-        assertClose 203.6<mm> TrueBeamMlc.bankSpanAtMlcPlane
-        assertClose 400.0<mm> projectedBackToIsocentre
+        for planeZ, expectedSpan in expectedSpans do
+            let physicalSpan = TrueBeamMlc.bankSpanAtPlane planeZ
+
+            let projectedToIsocentre =
+                TrueBeamMlc.projectFromPlaneToIsocentre physicalSpan planeZ
+
+            assertClose expectedSpan physicalSpan
+            assertClose 410.0<mm> projectedToIsocentre
+
+    [<Fact>]
+    let ``bank span increases monotonically from upstream to downstream`` () =
+        let upstream = TrueBeamMlc.bankSpanAtPlane TrueBeamMlc.mlcUpstreamZ
+        let midplane = TrueBeamMlc.bankSpanAtPlane TrueBeamMlc.mlcMidplaneZ
+        let downstream = TrueBeamMlc.bankSpanAtPlane TrueBeamMlc.mlcDownstreamZ
+
+        Assert.True(upstream < midplane)
+        Assert.True(midplane < downstream)
 
     [<Fact>]
     let ``MLC placements transform to minus 491 millimetres in isocentre frame`` () =
@@ -281,6 +300,8 @@ module TrueBeamMlcTests =
     let ``supported MLC thickness is 67 millimetres with 33 point 5 millimetre half thickness`` () =
         Assert.Equal(67.0<mm>, TrueBeamMlc.thickness)
         Assert.Equal(33.5<mm>, TrueBeamMlc.halfThickness)
+        Assert.Equal(475.5<mm>, TrueBeamMlc.mlcUpstreamZ)
+        Assert.Equal(542.5<mm>, TrueBeamMlc.mlcDownstreamZ)
 
         let profileMinimum = TrueBeamMlc.localProfile |> List.minBy _.Z
         let profileMaximum = TrueBeamMlc.localProfile |> List.maxBy _.Z
@@ -320,9 +341,22 @@ module TrueBeamMlcTests =
         Assert.Equal(-TrueBeamMlc.halfThickness, lowerRearPoint.Z)
 
     [<Fact>]
-    let ``bank placements use the independently derived physical bank span`` () =
-        TrueBeamMlc.placements
-        |> List.iter (fun bank -> Assert.Equal(TrueBeamMlc.bankSpanAtMlcPlane, bank.BankSpan))
+    let ``bank envelope uses a source-projected Y half-span at every X-Z profile point`` () =
+        for bank in TrueBeamMlc.placements do
+            Assert.Equal(TrueBeamMlc.localProfile.Length, bank.EnvelopeProfile.Length)
+
+            (TrueBeamMlc.localProfile, bank.EnvelopeProfile)
+            ||> List.iter2 (fun profilePoint envelopePoint ->
+                let sourceZ = TrueBeamMlc.mlcMidplaneZ + profilePoint.Z
+                let expectedHalfSpan = TrueBeamMlc.bankHalfSpanAtPlane sourceZ
+
+                Assert.Equal(profilePoint.X, envelopePoint.X)
+                Assert.Equal(profilePoint.Z, envelopePoint.Z)
+                assertClose expectedHalfSpan envelopePoint.HalfSpan)
+
+            let distinctHalfSpans = bank.EnvelopeProfile |> List.map _.HalfSpan |> List.distinct
+
+            Assert.True(distinctHalfSpans.Length > 1)
 
     [<Fact>]
     let ``positive and negative MLC bank placements are symmetric`` () =
@@ -332,8 +366,7 @@ module TrueBeamMlcTests =
         Assert.Equal(-positive.TipReference.X, negative.TipReference.X)
         Assert.Equal(positive.TipReference.Y, negative.TipReference.Y)
         Assert.Equal(positive.TipReference.Z, negative.TipReference.Z)
-        Assert.True(positive.LocalProfile = negative.LocalProfile)
-        Assert.Equal(positive.BankSpan, negative.BankSpan)
+        Assert.True(positive.EnvelopeProfile = negative.EnvelopeProfile)
 
     [<Fact>]
     let ``MLC bank tip references match the existing TOPAS positions`` () =
@@ -379,8 +412,7 @@ module TrueBeamMlcTests =
         Assert.Equal(sourcePlacement.TipReference.X, transformed.TipReference.X)
         Assert.Equal(sourcePlacement.TipReference.Y, transformed.TipReference.Y)
         Assert.Equal(sourcePlacement.TipReference.Z - 1000.0<mm>, transformed.TipReference.Z)
-        Assert.True(sourcePlacement.LocalProfile = transformed.LocalProfile)
-        Assert.Equal(sourcePlacement.BankSpan, transformed.BankSpan)
+        Assert.True(sourcePlacement.EnvelopeProfile = transformed.EnvelopeProfile)
 
     [<Fact>]
     let ``domain MLC geometry retains millimetre units through the rendering boundary input`` () =
@@ -390,8 +422,8 @@ module TrueBeamMlcTests =
             requiresMillimetres bank.TipReference.X
             requiresMillimetres bank.TipReference.Y
             requiresMillimetres bank.TipReference.Z
-            requiresMillimetres bank.BankSpan
 
-            for point in bank.LocalProfile do
+            for point in bank.EnvelopeProfile do
                 requiresMillimetres point.X
                 requiresMillimetres point.Z
+                requiresMillimetres point.HalfSpan

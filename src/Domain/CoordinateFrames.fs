@@ -40,8 +40,7 @@ module IsocentreFrame =
     let fromSourceMlcBankPlacement (placement: SourceFrameMlcBankPlacement) : IsocentreFrameMlcBankPlacement = {
         Side = placement.Side
         TipReference = fromSourcePoint placement.TipReference
-        LocalProfile = placement.LocalProfile
-        BankSpan = placement.BankSpan
+        EnvelopeProfile = placement.EnvelopeProfile
     }
 
     /// The isocentre origin in the isocentre frame.

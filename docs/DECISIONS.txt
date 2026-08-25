@@ -422,3 +422,17 @@ Evidence used for today's jaw decisions
   - Wireframe edges are extracted from the already transformed JSCAD jaw solids rather than recalculating jaw geometry.
   - MLC banks remain solid in BEV.
   - Wireframe is viewer-only and is never included in STL export.
+
+09:46 - Made beam-head solids slightly transparent in the viewer
+  - Transparency is a viewer-only readability aid.
+  - Jaw wireframe remains the default BEV presentation.
+  - MLC banks remain solid in BEV but are slightly transparent so they can be inspected behind the jaw wireframe.
+  - STL export is unchanged and never includes presentation styling.
+
+11:03 - Chose a 410 mm projected envelope for the simplified MLC banks
+  - The nominal Millennium field coverage remains 400 mm at isocentre.
+  - The simplified physical bank envelope is modelled slightly wider at 410 mm projected at isocentre.
+  - This gives the bank material approximately 5 mm extra coverage per side beyond the nominal field.
+  - The 410 mm value is an explicit modelling assumption rather than a vendor-exact dimension.
+  - Source divergence gives approximate physical Y spans of 194.955 mm upstream, 208.690 mm at the midplane and 222.425 mm downstream.
+  - These face dimensions are derived from the projected envelope and MLC Z positions, not stored as independent constants.

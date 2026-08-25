@@ -74,20 +74,25 @@ type MlcBankSide =
 /// Represents a point in the local X-Z profile of a simplified MLC bank.
 type MlcProfilePoint = { X: float<mm>; Z: float<mm> }
 
+/// Represents one local X-Z profile point with its source-projected Y half-span.
+type MlcBankEnvelopePoint = {
+    X: float<mm>
+    Z: float<mm>
+    HalfSpan: float<mm>
+}
+
 /// Describes a source-frame MLC bank whose reference is the beam-facing tip centre at the MLC midplane.
 type SourceFrameMlcBankPlacement = {
     Side: MlcBankSide
     TipReference: SourceFramePoint
-    LocalProfile: MlcProfilePoint list
-    BankSpan: float<mm>
+    EnvelopeProfile: MlcBankEnvelopePoint list
 }
 
 /// Describes an isocentre-frame MLC bank for presentation and export.
 type IsocentreFrameMlcBankPlacement = {
     Side: MlcBankSide
     TipReference: IsocentreFramePoint
-    LocalProfile: MlcProfilePoint list
-    BankSpan: float<mm>
+    EnvelopeProfile: MlcBankEnvelopePoint list
 }
 
 /// Provides calculations for divergent aperture lines.

@@ -20,7 +20,6 @@ let private createJscadJaw
 [<Import("createMlcBank", "./BeamHeadJscad.js")>]
 let private createJscadMlcBank
     (side: string)
-    (bankSpan: float)
     (referenceX: float)
     (referenceY: float)
     (referenceZ: float)
@@ -69,13 +68,12 @@ let createMlcBank (placement: IsocentreFrameMlcBankPlacement) =
         | PositiveBank -> "positive"
 
     let profilePoints: obj array array =
-        placement.LocalProfile
-        |> List.map (fun point -> [| box (float point.X); box (float point.Z) |])
+        placement.EnvelopeProfile
+        |> List.map (fun point -> [| box (float point.X); box (float point.Z); box (float point.HalfSpan) |])
         |> List.toArray
 
     createJscadMlcBank
         side
-        (float placement.BankSpan)
         (float placement.TipReference.X)
         (float placement.TipReference.Y)
         (float placement.TipReference.Z)
