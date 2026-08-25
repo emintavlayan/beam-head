@@ -436,3 +436,21 @@ Evidence used for today's jaw decisions
   - The 410 mm value is an explicit modelling assumption rather than a vendor-exact dimension.
   - Source divergence gives approximate physical Y spans of 194.955 mm upstream, 208.690 mm at the midplane and 222.425 mm downstream.
   - These face dimensions are derived from the projected envelope and MLC Z positions, not stored as independent constants.
+
+13:49 - Defined simplified jaw-body extents from geometric coverage assumptions
+  - Exact manufacturer outer jaw-body dimensions are not available from the public geometry evidence used by BeamHead.
+  - The jaw aperture geometry, source focus, thickness, reference locations and Y-jaw trajectory remain evidence-based or separately documented assumptions; the outer body extents defined here are intentionally simplified modelling values.
+  - Cross-axis body widths were chosen to project to approximately 500 mm at isocentre when viewed from the source.
+    - The nominal clinical field is 400 mm wide, so this gives approximately 50 mm of additional material coverage on each side of the field.
+    - For the lower X jaws at approximately 406 mm from the source, this gives a physical cross-axis width of 203 mm.
+    - For the upper Y jaws at approximately 312.5 mm from the source, this gives a physical cross-axis width of approximately 156.25 mm.
+  - Closing-axis body lengths were chosen from the adopted maximum jaw travel plus an additional 50 mm projected margin at isocentre.
+    - For the X jaw, the adopted range from +200 mm open to -20 mm overtravel is 220 mm at isocentre. Adding 50 mm gives a 270 mm projected body requirement, corresponding to approximately 109.6 mm at the 406 mm jaw plane.
+    - For the Y jaw, the adopted range from +200 mm open to -100 mm overtravel was extended by another 50 mm projected margin. Using the jaw's approximately 319 mm arc trajectory gives a required body length of approximately 110.5 mm.
+  - Both closing-axis extents are therefore simplified to 110 mm.
+  - Final simplified jaw-body dimensions are:
+    - lower X jaw: 203 mm cross-axis x 110 mm closing-axis
+    - upper Y jaw: 156.25 mm cross-axis x 110 mm closing-axis
+  - These values are not claimed as vendor-exact TrueBeam dimensions.
+  - Their purpose is to provide a physically reasonable tungsten envelope that comfortably covers the clinically accessible aperture without introducing unsupported mechanical detail.
+  - Because outer jaw-body dimensions can influence scattered radiation, these assumptions should be stated explicitly in any scientific use of the model and can later be included in a geometry-sensitivity study.

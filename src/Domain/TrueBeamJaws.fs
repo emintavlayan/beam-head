@@ -30,11 +30,17 @@ module TrueBeamJaws =
     /// The aperture-face-midpoint trajectory radius for each Y jaw.
     let yJawReferenceRadius = yJawUpstreamTrajectoryRadius + jawThickness / 2.0
 
-    /// A simplified, non-vendor-exact jaw-body extent perpendicular to jaw motion.
-    let simplifiedJawCrossAxisExtent = 200.0<mm>
+    /// The simplified, non-vendor-exact physical Y width of each lower X-jaw body.
+    let xJawCrossAxisExtent = 203.0<mm>
 
-    /// A simplified, non-vendor-exact jaw-body extent along the jaw closing axis.
-    let simplifiedJawClosingAxisExtent = 80.0<mm>
+    /// The simplified, non-vendor-exact physical X length of each lower X-jaw body.
+    let xJawClosingAxisExtent = 110.0<mm>
+
+    /// The simplified, non-vendor-exact physical X width of each upper Y-jaw body.
+    let yJawCrossAxisExtent = 156.25<mm>
+
+    /// The simplified, non-vendor-exact physical Y length of each upper Y-jaw body.
+    let yJawClosingAxisExtent = 110.0<mm>
 
     let private signedEdge side positiveEdge =
         match side with
@@ -47,9 +53,15 @@ module TrueBeamJaws =
         IsocentrePlaneEdge = signedEdge side jawPhysicalEdgeAtIsocentre
     }
 
-    let private bodyDimensions = {
-        ClosingAxisExtent = simplifiedJawClosingAxisExtent
-        CrossAxisExtent = simplifiedJawCrossAxisExtent
+    let private xJawBodyDimensions = {
+        ClosingAxisExtent = xJawClosingAxisExtent
+        CrossAxisExtent = xJawCrossAxisExtent
+        Thickness = jawThickness
+    }
+
+    let private yJawBodyDimensions = {
+        ClosingAxisExtent = yJawClosingAxisExtent
+        CrossAxisExtent = yJawCrossAxisExtent
         Thickness = jawThickness
     }
 
@@ -68,7 +80,7 @@ module TrueBeamJaws =
                 Z = xJawReferenceZ
             }
             ApertureFaceAngleRadians = DivergentApertureLine.angleRadians TrueBeamGeometry.isocentreZ line
-            BodyDimensions = bodyDimensions
+            BodyDimensions = xJawBodyDimensions
         }
 
     let private positiveRadiusIntersection (radius: float<mm>) (line: DivergentApertureLine) =
@@ -99,7 +111,7 @@ module TrueBeamJaws =
                 Z = referenceZ
             }
             ApertureFaceAngleRadians = DivergentApertureLine.angleRadians TrueBeamGeometry.isocentreZ line
-            BodyDimensions = bodyDimensions
+            BodyDimensions = yJawBodyDimensions
         }
 
     /// The final source-frame rigid poses of the two X jaws and two Y jaws.

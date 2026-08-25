@@ -102,18 +102,24 @@ module TrueBeamJawTests =
         |> List.iter (fun placement -> Assert.Equal(78.0<mm>, placement.BodyDimensions.Thickness))
 
     [<Fact>]
-    let ``simplified jaw cross axis extent is exactly 200 millimetres`` () =
-        Assert.Equal(200.0<mm>, TrueBeamJaws.simplifiedJawCrossAxisExtent)
+    let ``lower X jaws use the simplified axis-specific body extents`` () =
+        Assert.Equal(203.0<mm>, TrueBeamJaws.xJawCrossAxisExtent)
+        Assert.Equal(110.0<mm>, TrueBeamJaws.xJawClosingAxisExtent)
 
-        TrueBeam.jaws
-        |> List.iter (fun placement -> Assert.Equal(200.0<mm>, placement.BodyDimensions.CrossAxisExtent))
+        for side in [ Negative; Positive ] do
+            let dimensions = (placement X side).BodyDimensions
+            Assert.Equal(203.0<mm>, dimensions.CrossAxisExtent)
+            Assert.Equal(110.0<mm>, dimensions.ClosingAxisExtent)
 
     [<Fact>]
-    let ``simplified jaw closing axis extent is exactly 80 millimetres`` () =
-        Assert.Equal(80.0<mm>, TrueBeamJaws.simplifiedJawClosingAxisExtent)
+    let ``upper Y jaws use the simplified axis-specific body extents`` () =
+        Assert.Equal(156.25<mm>, TrueBeamJaws.yJawCrossAxisExtent)
+        Assert.Equal(110.0<mm>, TrueBeamJaws.yJawClosingAxisExtent)
 
-        TrueBeam.jaws
-        |> List.iter (fun placement -> Assert.Equal(80.0<mm>, placement.BodyDimensions.ClosingAxisExtent))
+        for side in [ Negative; Positive ] do
+            let dimensions = (placement Y side).BodyDimensions
+            Assert.Equal(156.25<mm>, dimensions.CrossAxisExtent)
+            Assert.Equal(110.0<mm>, dimensions.ClosingAxisExtent)
 
     [<Fact>]
     let ``X jaw reference Z is exactly 406 millimetres`` () =
