@@ -191,6 +191,7 @@ export function startViewer(
     let controlState = { ...orbitControls.defaults };
     let updateView = true;
     let rotateDelta = [0, 0];
+    let panDelta = [0, 0];
     let zoomDelta = 0;
     let pointerDown = false;
     let lastX = 0;
@@ -260,6 +261,18 @@ export function startViewer(
             updateView = true;
         }
 
+        if (!isBeamEyeView && (panDelta[0] || panDelta[1])) {
+            const updated = orbitControls.pan(
+                { controls: controlState, camera },
+                panDelta,
+            );
+            controlState = { ...controlState, ...updated.controls };
+            camera.position = updated.camera.position;
+            camera.target = updated.camera.target;
+            panDelta = [0, 0];
+            updateView = true;
+        }
+
         if (!isBeamEyeView && zoomDelta) {
             const updated = orbitControls.zoom(
                 { controls: controlState, camera, speed: 0.08 },
@@ -295,8 +308,13 @@ export function startViewer(
     const pointerMoveHandler = (event) => {
         if (!pointerDown) return;
 
-        rotateDelta[0] += event.clientX - lastX;
-        rotateDelta[1] += lastY - event.clientY;
+        if (event.shiftKey) {
+            panDelta[0] += lastX - event.clientX;
+            panDelta[1] += event.clientY - lastY;
+        } else {
+            rotateDelta[0] += event.clientX - lastX;
+            rotateDelta[1] += lastY - event.clientY;
+        }
         lastX = event.clientX;
         lastY = event.clientY;
         event.preventDefault();
