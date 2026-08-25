@@ -130,10 +130,13 @@ const jawWireframeEntity = jaw => {
     });
 
     const positions = Array.from(uniqueEdges.values()).flat();
+    // Required by drawLines; these renderer normals have no physical meaning.
+    const normals = positions.map(() => [0, 0, 1]);
 
     return {
         geometry: {
             positions,
+            normals,
             indices: positions.map((_, index) => index),
             color: jawWireframeColor,
         },
