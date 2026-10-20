@@ -1,13 +1,13 @@
 namespace BeamHead.Domain
 
-/// Provides the simplified, fully retracted Millennium 120 MLC geometry used for TSEBT.
+/// Provides the simplified Millennium 120 MLC geometry at its TSEBT delivery position.
 [<RequireQualifiedAccess>]
 module TrueBeamMlc =
     /// The MLC reference midplane distance downstream from the source.
     let mlcMidplaneZ = 509.0<mm>
 
-    /// The fully retracted positive tip setting projected at isocentre.
-    let retractedTipAtIsocentre = 203.6<mm>
+    /// The positive leaf-tip delivery position projected at isocentre.
+    let deliveryTipAtIsocentre = 201.0<mm>
 
     /// The nominal Millennium leaf coverage perpendicular to leaf travel at isocentre.
     let nominalLeafCoverageAtIsocentre = 400.0<mm>
@@ -43,7 +43,7 @@ module TrueBeamMlc =
 
     /// The derived positive-bank tip reference coordinate at the physical MLC plane.
     let tipReferenceXAtMlcPlane =
-        projectFromIsocentreToPlane retractedTipAtIsocentre mlcMidplaneZ
+        projectFromIsocentreToPlane deliveryTipAtIsocentre mlcMidplaneZ
 
     /// Derives the physical Y span of the simplified bank envelope at a source-frame Z plane.
     let bankSpanAtPlane planeZ =
@@ -119,7 +119,7 @@ module TrueBeamMlc =
         EnvelopeProfile = localEnvelopeProfile
     }
 
-    /// The final source-frame placements of the opposing, fully retracted MLC bank envelopes.
+    /// The final source-frame placements of the opposing MLC bank envelopes during delivery.
     let placements = [
         placement NegativeBank -tipReferenceXAtMlcPlane
         placement PositiveBank tipReferenceXAtMlcPlane

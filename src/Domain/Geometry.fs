@@ -42,11 +42,8 @@ type JawBodyDimensions = {
     Thickness: float<mm>
 }
 
-/// Describes a divergent aperture line in one transverse axis.
-type DivergentApertureLine = {
-    SourcePlaneEdge: float<mm>
-    IsocentrePlaneEdge: float<mm>
-}
+/// Describes a source-centred aperture ray by its transverse edge at isocentre.
+type DivergentApertureLine = { IsocentrePlaneEdge: float<mm> }
 
 /// Describes a source-frame jaw pose whose reference is the aperture-forming face midpoint at the jaw midplane.
 type SourceFrameJawPlacement = {
@@ -100,9 +97,8 @@ type IsocentreFrameMlcBankPlacement = {
 module DivergentApertureLine =
     /// Calculates the transverse aperture coordinate at a downstream Z position.
     let coordinateAt (isocentreZ: float<mm>) (z: float<mm>) (line: DivergentApertureLine) =
-        line.SourcePlaneEdge
-        + (line.IsocentrePlaneEdge - line.SourcePlaneEdge) * z / isocentreZ
+        line.IsocentrePlaneEdge * z / isocentreZ
 
     /// Calculates the signed angle of the aperture line from the positive Z axis.
     let angleRadians (isocentreZ: float<mm>) (line: DivergentApertureLine) =
-        atan ((line.IsocentrePlaneEdge - line.SourcePlaneEdge) / isocentreZ)
+        atan (line.IsocentrePlaneEdge / isocentreZ)

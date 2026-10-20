@@ -159,12 +159,12 @@ let private controlsCard =
                                 prop.className "flex items-center justify-between gap-3"
                                 prop.children [
                                     Html.span [ prop.className "font-medium"; prop.text "Millennium 120" ]
-                                    Html.span [ prop.className "badge badge-neutral"; prop.text "Retracted" ]
+                                    Html.span [ prop.className "badge badge-neutral"; prop.text "TSEBT delivery" ]
                                 ]
                             ]
                             Html.p [
                                 prop.className "mt-1 text-sm text-base-content/60"
-                                prop.text "Simplified two-bank geometry"
+                                prop.text $"Leaf tips: +/-{float TrueBeamMlc.deliveryTipAtIsocentre} mm at isocentre"
                             ]
                         ]
                     ]
@@ -172,7 +172,7 @@ let private controlsCard =
                     Html.button [
                         prop.className "btn btn-primary mt-1 w-full"
                         prop.onClick (fun _ ->
-                            JscadGeometry.downloadStl "truebeam-400x400mm-retracted-mlc.stl" trueBeamGeometryForExport)
+                            JscadGeometry.downloadStl "truebeam-400x400mm-mlc201mm.stl" trueBeamGeometryForExport)
                         prop.text "Export beam head STL"
                     ]
                 ]
@@ -226,7 +226,7 @@ let private viewerCard selectedMode showDebugGeometry dispatch =
                                 Html.h2 [ prop.className "text-lg font-semibold"; prop.text "3D preview" ]
                                 Html.p [
                                     prop.className "text-sm text-base-content/60"
-                                    prop.text "TrueBeam jaws and retracted Millennium 120 MLC"
+                                    prop.text "TrueBeam jaws and Millennium 120 MLC at the TSEBT delivery position"
                                 ]
                             ]
                             Html.div [
