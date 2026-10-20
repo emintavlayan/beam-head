@@ -17,6 +17,7 @@ const sceneGuides = {
 
 const initialCameraDistanceScale = 2.25;
 const viewerSolidAlpha = 0.72;
+const savedOrbitViews = new WeakMap();
 const palette = {
     xJaw: [0.05, 0.55, 0.58, viewerSolidAlpha],
     yJaw: [0.88, 0.42, 0.12, viewerSolidAlpha],
@@ -281,6 +282,11 @@ export function startViewer(
             ),
             target: [0, 0, 0],
         };
+    const savedView = savedOrbitViews.get(container);
+    if (!isBeamEyeView && savedView) {
+        camera.position = [...savedView.position];
+        camera.target = [...savedView.target];
+    }
     let controlState = { ...orbitControls.defaults };
     let updateView = true;
     let rotateDelta = [0, 0];
@@ -291,9 +297,16 @@ export function startViewer(
     let lastY = 0;
     let animationFrame;
 
+    const canvas = document.createElement("canvas");
+    canvas.style.cssText = "width:100%;height:100%;display:block";
+    container.appendChild(canvas);
+
     const updateProjection = () => {
         const width = Math.max(container.clientWidth, 1);
         const height = Math.max(container.clientHeight, 1);
+        const pixelRatio = window.devicePixelRatio || 1;
+        canvas.width = Math.round(width * pixelRatio);
+        canvas.height = Math.round(height * pixelRatio);
         perspectiveCamera.setProjection(camera, camera, { width, height });
         perspectiveCamera.update(camera, camera);
         updateView = true;
@@ -302,7 +315,7 @@ export function startViewer(
     updateProjection();
 
     const render = prepareRender({
-        glOptions: { container },
+        glOptions: { canvas },
     });
     const solidOptions = { smoothNormals: false };
     const geometryEntities = isBeamEyeView
@@ -451,6 +464,12 @@ export function startViewer(
     animationFrame = window.requestAnimationFrame(updateAndRender);
 
     return () => {
+        if (!isBeamEyeView) {
+            savedOrbitViews.set(container, {
+                position: [...camera.position],
+                target: [...camera.target],
+            });
+        }
         window.cancelAnimationFrame(animationFrame);
         resizeObserver.disconnect();
         if (!isBeamEyeView) {
@@ -460,6 +479,8 @@ export function startViewer(
             container.removeEventListener("pointercancel", pointerUpHandler);
             container.removeEventListener("wheel", wheelHandler);
         }
+        const gl = canvas.getContext("webgl");
+        gl?.getExtension("WEBGL_lose_context")?.loseContext();
         container.replaceChildren();
     };
 }

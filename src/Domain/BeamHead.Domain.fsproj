@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Geometry.fs" />
+    <Compile Include="JawField.fs" />
     <Compile Include="TrueBeamGeometry.fs" />
     <Compile Include="TrueBeamJaws.fs" />
     <Compile Include="TrueBeamMlc.fs" />

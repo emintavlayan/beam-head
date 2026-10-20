@@ -1,14 +1,8 @@
 namespace BeamHead.Domain
 
-/// Provides the static 400 x 400 mm TrueBeam jaw geometry.
+/// Calculates TrueBeam jaw geometry for a validated field at isocentre.
 [<RequireQualifiedAccess>]
 module TrueBeamJaws =
-    /// The fixed nominal clinical field size at isocentre in both X and Y.
-    let fieldSizeAtIsocentre = 400.0<mm>
-
-    /// The unsigned nominal clinical jaw edge at isocentre.
-    let nominalFieldEdgeAtIsocentre = fieldSizeAtIsocentre / 2.0
-
     /// The exact physical thickness of every TrueBeam jaw.
     let jawThickness = 78.0<mm>
 
@@ -40,8 +34,8 @@ module TrueBeamJaws =
         | Negative -> -positiveEdge
 
     /// Creates a ray from the source centre to the jaw field edge at isocentre.
-    let apertureLine side = {
-        IsocentrePlaneEdge = signedEdge side nominalFieldEdgeAtIsocentre
+    let apertureLine field axis side = {
+        IsocentrePlaneEdge = signedEdge side (JawField.size axis field / 2.0)
     }
 
     let private xJawBodyDimensions = {
@@ -57,8 +51,8 @@ module TrueBeamJaws =
     }
 
     /// Places an X jaw on its fixed axial reference plane.
-    let private xJaw side : SourceFrameJawPlacement =
-        let line = apertureLine side
+    let private xJaw field side : SourceFrameJawPlacement =
+        let line = apertureLine field X side
 
         let referenceCoordinate =
             DivergentApertureLine.coordinateAt TrueBeamGeometry.isocentreZ xJawReferenceZ line
@@ -81,8 +75,8 @@ module TrueBeamJaws =
         radius / sqrt (1.0 + slope * slope)
 
     /// Places a Y jaw on its circular reference trajectory.
-    let private yJaw side : SourceFrameJawPlacement =
-        let line = apertureLine side
+    let private yJaw field side : SourceFrameJawPlacement =
+        let line = apertureLine field Y side
         let referenceZ = positiveRadiusIntersection yJawReferenceRadius line
 
         let referenceCoordinate =
@@ -101,4 +95,4 @@ module TrueBeamJaws =
         }
 
     /// The final source-frame rigid poses of the two X jaws and two Y jaws.
-    let placements = [ xJaw Negative; xJaw Positive; yJaw Negative; yJaw Positive ]
+    let placements field = [ xJaw field Negative; xJaw field Positive; yJaw field Negative; yJaw field Positive ]

@@ -5,7 +5,7 @@ open Xunit
 
 module TrueBeamJawTests =
     let private placement axis side =
-        TrueBeam.jaws
+        (TrueBeam.jaws JawField.fullSize)
         |> List.find (fun placement -> placement.Axis = axis && placement.Side = side)
 
     let private assertClose (expected: float<mm>) (actual: float<mm>) =
@@ -68,25 +68,25 @@ module TrueBeamJawTests =
 
     [<Fact>]
     let ``nominal field guide half width is derived from the 400 millimetre clinical field`` () =
-        let nominalFieldGuideHalfWidth = TrueBeamJaws.fieldSizeAtIsocentre / 2.0
+        let nominalFieldGuideHalfWidth = (JawField.xSize JawField.fullSize) / 2.0
 
-        Assert.Equal(400.0<mm>, TrueBeamJaws.fieldSizeAtIsocentre)
+        Assert.Equal(400.0<mm>, (JawField.xSize JawField.fullSize))
         Assert.Equal(200.0<mm>, nominalFieldGuideHalfWidth)
-        Assert.Equal(200.0<mm>, TrueBeamJaws.nominalFieldEdgeAtIsocentre)
-        Assert.Equal(-200.0<mm>, -TrueBeamJaws.nominalFieldEdgeAtIsocentre)
+        Assert.Equal(200.0<mm>, (JawField.xSize JawField.fullSize / 2.0))
+        Assert.Equal(-200.0<mm>, -(JawField.xSize JawField.fullSize / 2.0))
 
     /// Checks that both aperture rays start at the source centre.
     [<Fact>]
     let ``jaw aperture rays pass through the source centre`` () =
         for side in [ Negative; Positive ] do
-            let ray = TrueBeamJaws.apertureLine side
+            let ray = TrueBeamJaws.apertureLine JawField.fullSize X side
             assertClose 0.0<mm> (DivergentApertureLine.coordinateAt TrueBeamGeometry.isocentreZ 0.0<mm> ray)
 
     /// Checks that the aperture matches the selected field at isocentre.
     [<Fact>]
     let ``400 millimetre field has plus and minus 200 millimetre jaw edges`` () =
-        let positive = TrueBeamJaws.apertureLine Positive
-        let negative = TrueBeamJaws.apertureLine Negative
+        let positive = TrueBeamJaws.apertureLine JawField.fullSize X Positive
+        let negative = TrueBeamJaws.apertureLine JawField.fullSize X Negative
 
         assertClose 200.0<mm> positive.IsocentrePlaneEdge
         assertClose -200.0<mm> negative.IsocentrePlaneEdge
@@ -96,7 +96,7 @@ module TrueBeamJawTests =
     let ``jaw physical thickness is exactly 78 millimetres`` () =
         Assert.Equal(78.0<mm>, TrueBeamJaws.jawThickness)
 
-        TrueBeam.jaws
+        (TrueBeam.jaws JawField.fullSize)
         |> List.iter (fun placement -> Assert.Equal(78.0<mm>, placement.BodyDimensions.Thickness))
 
     [<Fact>]
@@ -208,7 +208,7 @@ module TrueBeamJawTests =
     /// Checks that every placed aperture face projects to the source and selected field edge.
     [<Fact>]
     let ``aperture faces project to source centre and selected isocentre edges`` () =
-        for jaw in TrueBeam.jaws do
+        for jaw in (TrueBeam.jaws JawField.fullSize) do
             let referenceCoordinate =
                 match jaw.Axis with
                 | X -> jaw.ApertureFaceMidpoint.X
@@ -231,7 +231,7 @@ module TrueBeamJawTests =
     let ``domain jaw geometry retains millimetre units through the rendering boundary input`` () =
         let requiresMillimetres (_: float<mm>) = ()
 
-        for jaw in TrueBeam.jaws do
+        for jaw in (TrueBeam.jaws JawField.fullSize) do
             requiresMillimetres jaw.ApertureFaceMidpoint.X
             requiresMillimetres jaw.ApertureFaceMidpoint.Y
             requiresMillimetres jaw.ApertureFaceMidpoint.Z
@@ -409,9 +409,9 @@ module TrueBeamMlcTests =
     [<Fact>]
     let ``delivered MLC tips are 1 millimetre outside the jaw field edges`` () =
         let clearance =
-            TrueBeamMlc.deliveryTipAtIsocentre - TrueBeamJaws.nominalFieldEdgeAtIsocentre
+            TrueBeamMlc.deliveryTipAtIsocentre - (JawField.xSize JawField.fullSize / 2.0)
 
-        Assert.Equal(200.0<mm>, TrueBeamJaws.nominalFieldEdgeAtIsocentre)
+        Assert.Equal(200.0<mm>, (JawField.xSize JawField.fullSize / 2.0))
         Assert.Equal(201.0<mm>, TrueBeamMlc.deliveryTipAtIsocentre)
         assertClose 1.0<mm> clearance
 
@@ -439,3 +439,139 @@ module TrueBeamMlcTests =
                 requiresMillimetres point.X
                 requiresMillimetres point.Z
                 requiresMillimetres point.HalfSpan
+module JawFieldTests =
+    /// Extracts a successful result or fails the test with its error.
+    let private valid result =
+        match result with
+        | Ok value -> value
+        | Error error -> failwith error
+
+    /// Checks that both supported limits are accepted independently.
+    [<Fact>]
+    let ``field dimensions support 5 to 400 millimetres`` () =
+        let field = JawField.create 5.0<mm> 400.0<mm> |> valid
+        Assert.Equal(5.0<mm>, JawField.xSize field)
+        Assert.Equal(400.0<mm>, JawField.ySize field)
+
+    /// Checks rejection of invalid dimensions before geometry generation.
+    [<Fact>]
+    let ``invalid or fractional millimetre dimensions return errors`` () =
+        for value in [ 0.0; 4.0; 400.1; 5.5; System.Double.NaN; System.Double.PositiveInfinity ] do
+            Assert.True(JawField.create (value * 1.0<mm>) 100.0<mm> |> Result.isError)
+            Assert.True(JawField.create 100.0<mm> (value * 1.0<mm>) |> Result.isError)
+
+    /// Checks input rounding at a valid slider step.
+    [<Fact>]
+    let ``floating point slider values normalize to exact millimetres`` () =
+        let field = JawField.create ((0.1 + 0.2) * 100.0<mm>) 5.0<mm> |> valid
+        Assert.Equal(30.0<mm>, JawField.xSize field)
+
+    /// Checks all jaw faces against the requested rectangular or square field.
+    [<Fact>]
+    let ``selected jaw faces project to the correct independent field edges`` () =
+        let sizes = [ 5.0<mm>, 5.0<mm>; 5.0<mm>, 400.0<mm>; 360.0<mm>, 200.0<mm> ]
+        let squares = FieldControls.presets |> List.map (fun size -> size, size)
+        for x, y in sizes @ squares do
+            let field = JawField.create x y |> valid
+            for jaw in TrueBeam.jaws field do
+                let coordinate =
+                    match jaw.Axis with
+                    | X -> jaw.ApertureFaceMidpoint.X
+                    | Y -> jaw.ApertureFaceMidpoint.Y
+                let sign = if jaw.Side = Positive then 1.0 else -1.0
+                let expectedEdge = sign * JawField.size jaw.Axis field / 2.0
+                let slope = tan jaw.ApertureFaceAngleRadians
+                let atSource = coordinate - slope * jaw.ApertureFaceMidpoint.Z
+                let atIsocentre = coordinate + slope * (1000.0<mm> - jaw.ApertureFaceMidpoint.Z)
+                Assert.InRange(abs atSource, 0.0<mm>, 0.000001<mm>)
+                Assert.InRange(abs (atIsocentre - expectedEdge), 0.0<mm>, 0.000001<mm>)
+
+    /// Checks that changing Y does not move the X jaws.
+    [<Fact>]
+    let ``changing one field axis leaves the other jaw pair unchanged`` () =
+        let first = JawField.create 360.0<mm> 200.0<mm> |> valid
+        let second = JawField.create 360.0<mm> 5.0<mm> |> valid
+        let firstX = TrueBeam.jaws first |> List.filter (fun jaw -> jaw.Axis = X)
+        let secondX = TrueBeam.jaws second |> List.filter (fun jaw -> jaw.Axis = X)
+        Assert.True((firstX = secondX))
+
+module FieldControlsTests =
+    /// Checks that linked controls follow X down to the smallest field.
+    [<Fact>]
+    let ``square field mirrors X into Y at the minimum size`` () =
+        let model = FieldControls.init () |> FieldControls.setSliderSize X "0.5"
+        Assert.True(model.SquareField)
+        Assert.Equal(5.0<mm>, JawField.xSize model.Field)
+        Assert.Equal(5.0<mm>, JawField.ySize model.Field)
+        Assert.Equal("0.5", model.YInput)
+
+    /// Checks that disabled Y edits cannot change linked dimensions.
+    [<Fact>]
+    let ``Y edits are ignored while square field is checked`` () =
+        let initial = FieldControls.init () |> FieldControls.selectPreset X 360.0<mm>
+        let edited = initial |> FieldControls.editSize Y "20.0" |> FieldControls.selectPreset Y 100.0<mm>
+        Assert.Equal(initial, edited)
+
+    /// Checks independent edits followed by relinking Y to the current X.
+    [<Fact>]
+    let ``square checkbox copies X into Y after rectangular editing`` () =
+        let rectangular =
+            FieldControls.init ()
+            |> FieldControls.setSquareField false
+            |> FieldControls.selectPreset X 360.0<mm>
+            |> FieldControls.editSize Y "20.0"
+        Assert.Equal(360.0<mm>, JawField.xSize rectangular.Field)
+        Assert.Equal(200.0<mm>, JawField.ySize rectangular.Field)
+        let square = FieldControls.setSquareField true rectangular
+        Assert.Equal(360.0<mm>, JawField.ySize square.Field)
+        Assert.Equal("36.0", square.YInput)
+
+    /// Checks that invalid numeric edits cannot replace valid export geometry.
+    [<Fact>]
+    let ``invalid input keeps last valid field and disables export until corrected`` () =
+        let valid = FieldControls.init () |> FieldControls.selectPreset X 360.0<mm>
+        for input in [ ""; "0.4"; "40.1"; "NaN"; "0.55"; "abc" ] do
+            let invalid = FieldControls.editSize X input valid
+            Assert.Equal(valid.Field, invalid.Field)
+            Assert.False(FieldControls.canExport invalid)
+            let corrected = FieldControls.editSize X "0.5" invalid
+            Assert.True(FieldControls.canExport corrected)
+
+    /// Checks that presets synchronize numeric values and export names.
+    [<Fact>]
+    let ``presets produce matching field dimensions and STL filenames`` () =
+        for size in FieldControls.presets do
+            let model = FieldControls.init () |> FieldControls.selectPreset X size
+            let millimetres = int (float size)
+            Assert.Equal(size, JawField.xSize model.Field)
+            Assert.Equal(size, JawField.ySize model.Field)
+            Assert.Equal(model.XInput, model.YInput)
+            Assert.Equal(sprintf "truebeam-%dx%dmm-mlc201mm.stl" millimetres millimetres, FieldControls.exportFileName model.Field)
+
+    /// Checks the full-width filename for the minimum rectangular field.
+    [<Fact>]
+    let ``rectangular filename uses both selected dimensions`` () =
+        let model =
+            FieldControls.init ()
+            |> FieldControls.setSquareField false
+            |> FieldControls.setSliderSize X "0.5"
+            |> FieldControls.setSliderSize Y "36.0"
+        Assert.Equal("truebeam-5x360mm-mlc201mm.stl", FieldControls.exportFileName model.Field)
+
+    /// Checks that pending errors on either independent axis prevent export.
+    [<Fact>]
+    let ``correcting X does not hide an invalid independent Y input`` () =
+        let model =
+            FieldControls.init ()
+            |> FieldControls.setSquareField false
+            |> FieldControls.editSize Y ""
+            |> FieldControls.selectPreset X 360.0<mm>
+        Assert.False(FieldControls.canExport model)
+        Assert.True(model.YError.IsSome)
+
+    /// Checks decimal formatting when numeric editing ends.
+    [<Fact>]
+    let ``numeric input formats to one decimal on commit`` () =
+        let model = FieldControls.init () |> FieldControls.editSize X "36" |> FieldControls.commitSize X
+        Assert.Equal("36.0", model.XInput)
+        Assert.Equal("36.0", model.YInput)

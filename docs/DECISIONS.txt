@@ -474,3 +474,13 @@ Geometry baseline
   - MLC leaf-tip delivery positions are +/-201 mm at isocentre, supplied from the user's machine observation.
   - At the 509 mm source-to-MLC midplane these positions are +/-102.309 mm.
   - The 400 mm field STL export is named truebeam-400x400mm-mlc201mm.stl.
+
+Field-size controls
+  - Jaw fields support independent X and Y widths from 5 to 400 mm at isocentre, in 1 mm steps.
+  - Controls display centimetres with one decimal place.
+  - Each axis has a slider, numeric input and 10/20/30/36/40 cm commissioning presets.
+  - Square field links Y to X and disables all Y controls; unchecking keeps the current dimensions and enables independent Y editing.
+  - Rechecking Square field copies the current valid X dimension to Y.
+  - Invalid input retains the last valid geometry and disables export.
+  - Jaw placements, the debug field outline and STL filename derive from the same validated JawField value.
+  - The MLC delivery setting remains fixed at +/-201 mm at isocentre for every jaw field.
