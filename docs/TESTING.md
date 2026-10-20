@@ -61,16 +61,35 @@ From the repository root:
 ```sh
 dotnet test tests/Domain/Domain.Tests.fsproj
 dotnet test tests/Geometry/Geometry.Tests.fsproj
+dotnet test tests/Client/Client.Tests.fsproj
 npm --prefix src/Client run test:geometry
 ```
 
 Install the repository's .NET tools and client dependencies first if needed (`dotnet tool restore`, `npm --prefix src/Client ci`). The geometry script invokes the repository's Fable tool and then Node. Node uses the same JSCAD dependencies as the client.
 
-`dotnet run -- RunTestsHeadless` runs both native suites and the JSCAD suite. `dotnet run -- RunGeometryTests` runs the JSCAD suite alone.
+`dotnet run -- RunTestsHeadless` runs all three native suites and the JSCAD suite. `dotnet run -- RunGeometryTests` runs the JSCAD suite alone.
 
-## App behaviour
+## Test dialog
 
-The app checks the physical solid polygons and field-light pyramid before export, shows measured/expected values, and disables export if a declared requirement fails or geometric inspection returns an error. The rounded-tip field-clearance observation is displayed separately and does not disable export.
+Use **Tests** in the navigation bar or **Open tests** beside export. A large native modal keeps the geometry workbench behind it. The action header and progress remain visible above one vertically scrolling list. Chapter shortcuts move within the list.
+
+| Chapter | Visible checks | Execution |
+| --- | ---: | --- |
+| Domain tests | 55 | The original parameter, placement, transform and control test bodies |
+| Geometry checker tests | 15 | The original independent-checker test bodies |
+| JSCAD geometry tests | 10 | The selected scene plus the nine shared production-JSCAD groups |
+
+**Run all tests** executes 80 visible checks in 485 actual work steps. The 11 representative fields and 396 jaw settings are scheduled individually, allowing progress to repaint and Stop to work between settings. No timed pass animation is used. The right-hand squares are read-only status indicators: waiting, running, passed, failed, stopped or outdated. Expand a statement for failure details; the selected-scene check includes all 102 measured requirements with expected values and tolerances.
+
+The browser compiles the exact native test source bodies with `BrowserTestSupport.fs`, a small adapter for the assertion operations those tests use. It does not run the .NET/xUnit runner in the browser. Native test projects continue to use real xUnit. `JscadChecks.fs` contains the shared production test functions used by both the browser and Node.
+
+Closing the dialog, clicking outside it or pressing Escape keeps an active run running. **Stop** cancels it. Native modal behaviour traps focus, makes the background inert and restores focus when closed. Reopening preserves progress and results.
+
+Results belong to the captured physical field. Changing its accepted dimensions marks results outdated and rejects pending callbacks. Invalid numeric drafts block running and export; restoring the same physical field keeps its evidence. Export requires a complete, passing run and passing measured geometry for the exact field. It serializes the captured solids that were measured. A partial, stopped, failed or outdated run cannot authorize export.
+
+The rounded-tip field-clearance observation is displayed separately and does not disable export. A construction pass is evidence for the listed geometry requirements, not a claim of physical-machine or dose agreement.
+
+`tests/Client/Client.Tests.fsproj` adds 14 native xUnit tests for snapshot capture, run identity, callback order, invalidation, cancellation, persistent failures, measured evidence and export permission. These verify the workflow rather than adding another end-user chapter.
 
 ## Remaining coverage gaps
 

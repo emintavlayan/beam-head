@@ -498,3 +498,14 @@ Pre-export geometry validation
   - The current supplied MLC profile casts a point-source silhouette at approximately +/-197.953874 mm at isocentre, entering a 400 mm X jaw field by 2.046126 mm per symmetric side.
   - This silhouette is a model observation, not a measured radiation-field edge; the MLC profile is retained for separate validation.
   - STL serialization, vendor/profile agreement, material assignment and dose remain separate validation tasks.
+
+User-operated test dialog
+  - Present the three validation layers as numbered chapters in a large native modal with one vertical scroll area and fixed actions.
+  - Execute the original 55 Domain and 15 checker test bodies in the browser using a small assertion adapter; keep native xUnit execution unchanged.
+  - Share production JSCAD test functions between the browser and Node suite.
+  - Show 80 statements, 485 real work steps and expandable selected-scene measurements; status squares cannot be manually checked.
+  - Closing or Escape keeps a run active; Stop cancels it. Native dialog handles focus and background inertness.
+  - Bind evidence to the exact captured field and solids. Field changes revoke validity; stale or reordered callbacks receive no credit.
+  - Require all checks and measured geometry to pass before exporting the captured solids.
+  - Keep the rounded-shadow observation separate from construction pass/fail.
+  - Add 14 native xUnit workflow tests for progress, cancellation, invalidation, evidence and export gating.

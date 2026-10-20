@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../../src/Client/JscadGeometry.fs" Link="JscadGeometry.fs" />
+    <Compile Include="../../../src/Client/JscadChecks.fs" Link="JscadChecks.fs" />
     <Compile Include="Jscad.Tests.fs" />
     <None Include="paket.references" />
   </ItemGroup>

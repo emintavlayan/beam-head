@@ -57,6 +57,7 @@ Target.create "RunGeometryTests" (fun _ -> run npm [ "run"; "test:geometry" ] cl
 Target.create "RunTestsHeadless" (fun _ ->
     run dotnet [ "test" ] domainTestsPath
     run dotnet [ "test"; "tests/Geometry/Geometry.Tests.fsproj" ] "."
+    run dotnet [ "test"; "tests/Client/Client.Tests.fsproj" ] "."
     run npm [ "run"; "test:geometry" ] clientPath)
 
 Target.create "WatchRunTests" (fun _ ->

@@ -40,9 +40,11 @@ The codebase follows a lightweight domain-driven design approach in F#, with a s
 
 ## Geometry validation and tests
 
-The app measures resolved JSCAD solids before export, checks the field-light pyramid, and shows the results under Geometry checks. Failed construction checks disable export. The rounded MLC silhouette is reported separately from the nominal tip setting.
+Open **Tests** for a large scrollable dialog with three chapters: Domain tests, Geometry checker tests and JSCAD geometry tests. **Run all tests** executes 80 checks with real progress and read-only green/red indicators. Expand a statement to see failures or the 102 measurements of the selected scene. Closing keeps a run running; **Stop** cancels it.
 
-The native Domain suite has 55 tests. The separate Geometry suite adds 15 native checker tests and a production-JSCAD suite covering all 396 supported settings per jaw axis, representative rectangular fields and deliberate geometry defects.
+Export requires a completed passing run for the current field and uses the exact solids that were measured. Field changes invalidate results. The rounded MLC silhouette is reported separately from the nominal tip setting.
+
+The native Domain suite has 55 tests. The separate Geometry suite adds 15 native checker tests and a production-JSCAD suite covering all 396 supported settings per jaw axis, representative rectangular fields and deliberate geometry defects. A further 14 native client-workflow tests cover cancellation, stale results and export permission.
 
 See [test coverage and validation](docs/TESTING.md) for the requirements, evidence, commands and remaining gaps.
 

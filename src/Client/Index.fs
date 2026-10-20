@@ -2,49 +2,148 @@ module Index
 
 open BeamHead.Domain
 open Feliz
+open Elmish
 
-/// Represents the TrueBeam field workbench state.
+/// Represents the geometry workbench and its versioned verification dialog.
 type Model = {
     ViewerMode: GeometryViewer.ViewerMode
     ShowDebugGeometry: bool
+    ShowTests: bool
     FieldControls: FieldControls.Model
+    Tests: TestSession.Model
+    Workflow: TestCatalog.Workflow option
+    TestError: string option
 }
 
-/// Represents changes to the field controls and geometry viewer.
+/// Represents edits, dialog actions and actual asynchronous test results.
 type Msg =
     | SetViewerMode of GeometryViewer.ViewerMode
     | SetDebugGeometry of bool
+    | SetTestsVisible of bool
     | EditFieldSize of JawAxis * string
     | CommitFieldSize of JawAxis
     | SetSliderSize of JawAxis * string
     | SelectPreset of JawAxis * float<mm>
     | SetSquareField of bool
+    | RunTests
+    | StopTests
+    | TestStepFinished of int * int * string * Result<TestSession.Evidence, string>
 
-/// Creates the initial BeamHead client model.
-let init () = {
-    ViewerMode = GeometryViewer.ThreeD
-    ShowDebugGeometry = false
-    FieldControls = FieldControls.init ()
-}
+/// Creates the workbench without assuming any validation result.
+let init () =
+    {
+        ViewerMode = GeometryViewer.ThreeD
+        ShowDebugGeometry = false
+        ShowTests = false
+        FieldControls = FieldControls.init ()
+        Tests = TestSession.init TestCatalog.definitions
+        Workflow = None
+        TestError = None
+    },
+    Cmd.none
 
-/// Applies a client message to the current model.
+/// Schedules one actual step after yielding so the browser can paint progress and process interaction.
+let private nextTestStep model =
+    match model.Workflow with
+    | Some workflow when
+        model.Tests.Phase = TestSession.Running
+        && model.Tests.NextStep < workflow.Steps.Length
+        ->
+        let position, runId = model.Tests.NextStep, model.Tests.RunId
+        let step = workflow.Steps[position]
+
+        Cmd.OfAsync.perform
+            (fun () -> async {
+                do! Async.Sleep 1
+
+                return
+                    try
+                        step.Execute()
+                    with error ->
+                        Error error.Message
+            })
+            ()
+            (fun result -> TestStepFinished(runId, position, step.CheckId, result))
+    | _ -> Cmd.none
+
+/// Revokes evidence only when the accepted physical field actually changes.
+let private changeField (change: FieldControls.Model -> FieldControls.Model) (model: Model) =
+    let controls = change model.FieldControls
+
+    if controls.Field = model.FieldControls.Field then
+        { model with FieldControls = controls }
+    else
+        {
+            model with
+                FieldControls = controls
+                Tests = TestSession.invalidate model.Tests
+                Workflow = None
+                TestError = None
+        }
+
+/// Applies edits and accepts results only from the expected active test run.
 let update msg model =
     match msg with
-    | SetViewerMode viewerMode -> { model with ViewerMode = viewerMode }
-    | SetDebugGeometry showDebugGeometry -> {
-        model with
-            ShowDebugGeometry = showDebugGeometry
-      }
-    | EditFieldSize (axis, text) ->
-        { model with FieldControls = FieldControls.editSize axis text model.FieldControls }
-    | CommitFieldSize axis ->
-        { model with FieldControls = FieldControls.commitSize axis model.FieldControls }
-    | SetSliderSize (axis, text) ->
-        { model with FieldControls = FieldControls.setSliderSize axis text model.FieldControls }
-    | SelectPreset (axis, size) ->
-        { model with FieldControls = FieldControls.selectPreset axis size model.FieldControls }
-    | SetSquareField enabled ->
-        { model with FieldControls = FieldControls.setSquareField enabled model.FieldControls }
+    | SetViewerMode mode -> { model with ViewerMode = mode }, Cmd.none
+    | SetDebugGeometry enabled ->
+        {
+            model with
+                ShowDebugGeometry = enabled
+        },
+        Cmd.none
+    | SetTestsVisible visible -> { model with ShowTests = visible }, Cmd.none
+    | EditFieldSize(axis, text) -> changeField (FieldControls.editSize axis text) model, Cmd.none
+    | CommitFieldSize axis -> changeField (FieldControls.commitSize axis) model, Cmd.none
+    | SetSliderSize(axis, text) -> changeField (FieldControls.setSliderSize axis text) model, Cmd.none
+    | SelectPreset(axis, size) -> changeField (FieldControls.selectPreset axis size) model, Cmd.none
+    | SetSquareField enabled -> changeField (FieldControls.setSquareField enabled) model, Cmd.none
+    | StopTests ->
+        {
+            model with
+                Tests = TestSession.cancel model.Tests
+        },
+        Cmd.none
+    | RunTests when
+        model.Tests.Phase <> TestSession.Running
+        && FieldControls.canExport model.FieldControls
+        ->
+        let starting =
+            TestSession.start model.FieldControls.Field TestCatalog.definitions model.Tests
+
+        try
+            let workflow = TestCatalog.prepare model.FieldControls.Field
+
+            let updated = {
+                model with
+                    Tests = starting
+                    Workflow = Some workflow
+                    TestError = None
+            }
+
+            updated, nextTestStep updated
+        with error ->
+            {
+                model with
+                    Tests = TestSession.cancel starting
+                    Workflow = None
+                    TestError = Some error.Message
+            },
+            Cmd.none
+    | RunTests -> model, Cmd.none
+    | TestStepFinished(runId, position, checkId, outcome) ->
+        if
+            model.Tests.Phase <> TestSession.Running
+            || model.Tests.RunId <> runId
+            || model.Tests.NextStep <> position
+        then
+            model, Cmd.none
+        else
+            let updated = {
+                model with
+                    Tests = TestSession.completeStep runId position checkId outcome model.Tests
+            }
+
+            updated, nextTestStep updated
 
 /// Creates export solids from the selected jaw field.
 let private trueBeamJawsForExport field =
@@ -107,10 +206,12 @@ let private fieldSizeControl axis (model: FieldControls.Model) dispatch =
     let name = axisName axis
     let disabled = axis = Y && model.SquareField
     let size = JawField.size axis model.Field
+
     let text, error =
         match axis with
         | X -> model.XInput, model.XError
         | Y -> model.YInput, model.YError
+
     let inputId = $"field-{name.ToLowerInvariant()}-size"
 
     Html.fieldSet [
@@ -120,7 +221,11 @@ let private fieldSizeControl axis (model: FieldControls.Model) dispatch =
             Html.div [
                 prop.className "flex items-center justify-between gap-3"
                 prop.children [
-                    Html.label [ prop.htmlFor inputId; prop.className "font-medium"; prop.text $"{name} field size" ]
+                    Html.label [
+                        prop.htmlFor inputId
+                        prop.className "font-medium"
+                        prop.text $"{name} field size"
+                    ]
                     Html.div [
                         prop.className "flex items-center gap-2"
                         prop.children [
@@ -133,7 +238,7 @@ let private fieldSizeControl axis (model: FieldControls.Model) dispatch =
                                 prop.step 0.1
                                 prop.value text
                                 prop.ariaLabel $"{name} field size in centimetres"
-                                prop.onChange (fun (value: string) -> dispatch (EditFieldSize (axis, value)))
+                                prop.onChange (fun (value: string) -> dispatch (EditFieldSize(axis, value)))
                                 prop.onBlur (fun _ -> dispatch (CommitFieldSize axis))
                             ]
                             Html.span [ prop.className "text-sm"; prop.text "cm" ]
@@ -149,7 +254,7 @@ let private fieldSizeControl axis (model: FieldControls.Model) dispatch =
                 prop.step 0.1
                 prop.value (float size / 10.0)
                 prop.ariaLabel $"{name} field size slider"
-                prop.onChange (fun (value: string) -> dispatch (SetSliderSize (axis, value)))
+                prop.onChange (fun (value: string) -> dispatch (SetSliderSize(axis, value)))
             ]
             Html.div [
                 prop.className "flex flex-wrap gap-1"
@@ -157,12 +262,20 @@ let private fieldSizeControl axis (model: FieldControls.Model) dispatch =
                     for preset in FieldControls.presets do
                         Html.button [
                             prop.type' "button"
-                            prop.className (if size = preset then "btn btn-xs btn-primary" else "btn btn-xs btn-outline")
+                            prop.className (
+                                if size = preset then
+                                    "btn btn-xs btn-primary"
+                                else
+                                    "btn btn-xs btn-outline"
+                            )
                             prop.ariaLabel $"{name} preset {int (float preset / 10.0)} cm"
-                            prop.onClick (fun _ -> dispatch (SelectPreset (axis, preset)))
+                            prop.onClick (fun _ -> dispatch (SelectPreset(axis, preset)))
                             prop.text $"{int (float preset / 10.0)}"
                         ]
-                    Html.span [ prop.className "self-center px-1 text-xs text-base-content/60"; prop.text "cm" ]
+                    Html.span [
+                        prop.className "self-center px-1 text-xs text-base-content/60"
+                        prop.text "cm"
+                    ]
                 ]
             ]
             match error with
@@ -186,39 +299,38 @@ let private squareFieldToggle enabled dispatch =
         ]
     ]
 
-/// Renders measured pre-export checks and the rounded MLC shadow separately from its tip setting.
-let private geometryQaSummary (qa: Result<GeometryQaReport, string>) =
-    match qa with
-    | Error error -> Html.p [ prop.role "alert"; prop.className "text-sm text-error"; prop.text error ]
-    | Ok report ->
-        let passing = report.Measurements |> List.filter GeometryQa.meetsRequirement |> List.length
-        Html.details [
-            prop.className "rounded-box border border-base-300 p-3 text-sm"
-            prop.children [
-                Html.summary [
-                    prop.className (if GeometryQa.passes report then "cursor-pointer font-medium" else "cursor-pointer font-medium text-error")
-                    prop.text $"Geometry checks: {passing}/{report.Measurements.Length} pass"
+/// Shows verification state without automatically rerunning tests during rendering.
+let private testSummary field tests dispatch =
+    Html.div [
+        prop.className "rounded-box border border-base-300 p-3 text-sm"
+        prop.children [
+            Html.p [
+                prop.key "status"
+                prop.className "font-medium"
+                prop.text (TestSession.label tests)
+            ]
+            if TestSession.canExport field tests then
+                Html.p [
+                    prop.key "field"
+                    prop.className "mt-1 text-xs text-base-content/60"
+                    prop.text $"Verified field: {TestSession.fieldLabel field}"
                 ]
-                Html.p [ prop.className "mt-2 text-xs"; prop.text "Resolved solid polygons; numerical tolerance 0.000001 mm. Counts and topology must match exactly." ]
-                Html.p [ prop.className "mt-2"; prop.text $"MLC shadow half-width: {float report.MlcShadowHalfWidth:F3} mm at isocentre" ]
-                if report.MlcFieldClearance < 0.0<mm> then
-                    Html.p [ prop.className "mt-2 text-warning"; prop.text $"Rounded MLC shadow enters the requested X field by {float (-report.MlcFieldClearance):F3} mm per limiting side." ]
-                Html.div [
-                    prop.className "mt-2 max-h-64 overflow-auto"
-                    prop.children [
-                        for check in report.Measurements do
-                            Html.p [
-                                prop.className (if GeometryQa.meetsRequirement check then "py-1 text-xs" else "py-1 text-xs text-error")
-                                prop.text $"{check.Component}: {check.Requirement}: {check.Actual:F6} / expected {check.Expected:F6}"
-                            ]
-                    ]
-                ]
+            Html.button [
+                prop.key "open-tests"
+                prop.className "btn btn-outline btn-sm mt-3 w-full"
+                prop.onClick (fun _ -> dispatch (SetTestsVisible true))
+                prop.text "Open tests"
             ]
         ]
+    ]
 
 /// Renders field editing controls and exports the selected physical geometry.
-let private controlsCard (model: FieldControls.Model) jawGeometry qa dispatch =
-    let geometryPasses = qa |> Result.map GeometryQa.passes |> Result.defaultValue false
+let private controlsCard (model: FieldControls.Model) tests (workflow: TestCatalog.Workflow option) dispatch =
+    let checkedScene =
+        workflow |> Option.filter (fun item -> item.Scene.Field = model.Field)
+
+    let geometryPasses = TestSession.canExport model.Field tests && checkedScene.IsSome
+
     Html.aside [
         prop.className "card border border-base-300 bg-base-100 shadow-md"
         prop.children [
@@ -256,7 +368,8 @@ let private controlsCard (model: FieldControls.Model) jawGeometry qa dispatch =
 
                     Html.p [
                         prop.className "text-sm text-base-content/70"
-                        prop.text $"{FieldControls.formatCentimetres (JawField.xSize model.Field)} x {FieldControls.formatCentimetres (JawField.ySize model.Field)} cm at isocentre"
+                        prop.text
+                            $"{FieldControls.formatCentimetres (JawField.xSize model.Field)} x {FieldControls.formatCentimetres (JawField.ySize model.Field)} cm at isocentre"
                     ]
 
                     Html.div [ prop.className "divider my-0"; prop.text "Static MLC" ]
@@ -267,8 +380,14 @@ let private controlsCard (model: FieldControls.Model) jawGeometry qa dispatch =
                             Html.div [
                                 prop.className "flex items-center justify-between gap-3"
                                 prop.children [
-                                    Html.span [ prop.className "font-medium whitespace-nowrap"; prop.text "Millennium 120" ]
-                                    Html.span [ prop.className "badge badge-neutral shrink-0 whitespace-nowrap"; prop.text "Delivery" ]
+                                    Html.span [
+                                        prop.className "font-medium whitespace-nowrap"
+                                        prop.text "Millennium 120"
+                                    ]
+                                    Html.span [
+                                        prop.className "badge badge-neutral shrink-0 whitespace-nowrap"
+                                        prop.text "Delivery"
+                                    ]
                                 ]
                             ]
                             Html.p [
@@ -278,16 +397,19 @@ let private controlsCard (model: FieldControls.Model) jawGeometry qa dispatch =
                         ]
                     ]
 
-                    geometryQaSummary qa
+                    testSummary model.Field tests dispatch
 
                     Html.button [
                         prop.className "btn btn-primary mt-1 w-full"
                         prop.disabled (not (FieldControls.canExport model && geometryPasses))
                         prop.onClick (fun _ ->
                             if FieldControls.canExport model && geometryPasses then
-                                JscadGeometry.downloadStl
-                                    (FieldControls.exportFileName model.Field)
-                                    (Array.append jawGeometry trueBeamMlcBanksForExport))
+                                match checkedScene with
+                                | Some item ->
+                                    JscadGeometry.downloadStl
+                                        (FieldControls.exportFileName model.Field)
+                                        (Array.append item.Scene.Jaws item.Scene.Banks)
+                                | None -> ())
                         prop.text "Export beam head STL"
                     ]
                 ]
@@ -385,7 +507,6 @@ let private viewerCard field jawGeometry selectedMode showDebugGeometry dispatch
 let view model dispatch =
     let field = model.FieldControls.Field
     let jawGeometry = trueBeamJawsForExport field
-    let qa = JscadGeometry.inspectBeamHead field jawGeometry trueBeamMlcBanksForExport
     let viewerJawGeometry = JscadGeometry.createViewerDisplay jawGeometry
 
     Html.main [
@@ -403,17 +524,38 @@ let view model dispatch =
                                     Html.h1 [ prop.className "text-xl font-bold tracking-tight"; prop.text "BeamHead" ]
                                 ]
                             ]
+                            Html.div [
+                                prop.className "navbar-end"
+                                prop.children [
+                                    Html.button [
+                                        prop.id "tests-trigger"
+                                        prop.className "btn btn-outline btn-sm"
+                                        prop.onClick (fun _ -> dispatch (SetTestsVisible true))
+                                        prop.text "Tests"
+                                    ]
+                                ]
+                            ]
                         ]
                     ]
 
                     Html.div [
                         prop.className "mt-4 grid items-start gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]"
                         prop.children [
-                            controlsCard model.FieldControls jawGeometry qa dispatch
+                            controlsCard model.FieldControls model.Tests model.Workflow dispatch
                             viewerCard field viewerJawGeometry model.ViewerMode model.ShowDebugGeometry dispatch
                         ]
                     ]
                 ]
             ]
+            TestDialog.View(
+                model.ShowTests,
+                field,
+                FieldControls.canExport model.FieldControls,
+                model.Tests,
+                model.TestError,
+                (fun () -> dispatch RunTests),
+                (fun () -> dispatch StopTests),
+                (fun () -> dispatch (SetTestsVisible false))
+            )
         ]
     ]

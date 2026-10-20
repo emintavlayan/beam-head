@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
@@ -10,9 +10,17 @@
         <None Include="index.html" />
         <None Include="paket.references" />
         <None Include="BeamHeadJscad.js" />
+        <None Include="TestDialogInterop.js" />
         <Compile Include="JscadGeometry.fs" />
         <Compile Include="GeometryViewer.fs" />
         <Compile Include="FieldControls.fs" />
+        <Compile Include="TestSession.fs" />
+        <Compile Include="BrowserTestSupport.fs" />
+        <Compile Include="../../tests/Domain/Domain.Tests.fs" Link="SharedDomain.Tests.fs" />
+        <Compile Include="../../tests/Geometry/Geometry.Validation.Tests.fs" Link="SharedGeometry.Tests.fs" />
+        <Compile Include="JscadChecks.fs" />
+        <Compile Include="TestCatalog.fs" />
+        <Compile Include="TestDialog.fs" />
         <Compile Include="Index.fs" />
         <Compile Include="App.fs" />
         <None Include="vite.config.mts" />
