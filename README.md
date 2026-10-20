@@ -38,6 +38,14 @@ The codebase follows a lightweight domain-driven design approach in F#, with a s
 - Millennium 120 leaf tips remain fixed at ±201 mm at isocentre.
 - STL filenames include both jaw dimensions, for example `truebeam-360x200mm-mlc201mm.stl`.
 
+## Geometry validation and tests
+
+The app measures resolved JSCAD solids before export, checks the field-light pyramid, and shows the results under Geometry checks. Failed construction checks disable export. The rounded MLC silhouette is reported separately from the nominal tip setting.
+
+The native Domain suite has 55 tests. The separate Geometry suite adds 15 native checker tests and a production-JSCAD suite covering all 396 supported settings per jaw axis, representative rectangular fields and deliberate geometry defects.
+
+See [test coverage and validation](docs/TESTING.md) for the requirements, evidence, commands and remaining gaps.
+
 ## Status
 
 Early development.

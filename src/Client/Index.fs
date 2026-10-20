@@ -85,23 +85,7 @@ let private viewerDisplayMlcReferences =
 
 /// Creates the rectangular field guide from the selected isocentre dimensions.
 let private nominalFieldCorners field =
-    let halfX = JawField.xSize field / 2.0
-    let halfY = JawField.ySize field / 2.0
-
-    /// Creates one field-guide corner in the isocentre plane.
-    let corner x y : IsocentreFramePoint = {
-        X = x
-        Y = y
-        Z = IsocentreFrame.isocentre.Z
-    }
-
-    [|
-        corner -halfX -halfY
-        corner halfX -halfY
-        corner halfX halfY
-        corner -halfX halfY
-    |]
-    |> Array.map ViewerDisplay.fromIsocentrePoint
+    FieldLight.corners field |> Array.map ViewerDisplay.fromIsocentrePoint
 
 /// Creates the field-dependent diagnostic geometry for the viewer.
 let private viewerDebugGeometry field : GeometryViewer.DebugGeometry = {
@@ -202,8 +186,39 @@ let private squareFieldToggle enabled dispatch =
         ]
     ]
 
+/// Renders measured pre-export checks and the rounded MLC shadow separately from its tip setting.
+let private geometryQaSummary (qa: Result<GeometryQaReport, string>) =
+    match qa with
+    | Error error -> Html.p [ prop.role "alert"; prop.className "text-sm text-error"; prop.text error ]
+    | Ok report ->
+        let passing = report.Measurements |> List.filter GeometryQa.meetsRequirement |> List.length
+        Html.details [
+            prop.className "rounded-box border border-base-300 p-3 text-sm"
+            prop.children [
+                Html.summary [
+                    prop.className (if GeometryQa.passes report then "cursor-pointer font-medium" else "cursor-pointer font-medium text-error")
+                    prop.text $"Geometry checks: {passing}/{report.Measurements.Length} pass"
+                ]
+                Html.p [ prop.className "mt-2 text-xs"; prop.text "Resolved solid polygons; numerical tolerance 0.000001 mm. Counts and topology must match exactly." ]
+                Html.p [ prop.className "mt-2"; prop.text $"MLC shadow half-width: {float report.MlcShadowHalfWidth:F3} mm at isocentre" ]
+                if report.MlcFieldClearance < 0.0<mm> then
+                    Html.p [ prop.className "mt-2 text-warning"; prop.text $"Rounded MLC shadow enters the requested X field by {float (-report.MlcFieldClearance):F3} mm per limiting side." ]
+                Html.div [
+                    prop.className "mt-2 max-h-64 overflow-auto"
+                    prop.children [
+                        for check in report.Measurements do
+                            Html.p [
+                                prop.className (if GeometryQa.meetsRequirement check then "py-1 text-xs" else "py-1 text-xs text-error")
+                                prop.text $"{check.Component}: {check.Requirement}: {check.Actual:F6} / expected {check.Expected:F6}"
+                            ]
+                    ]
+                ]
+            ]
+        ]
+
 /// Renders field editing controls and exports the selected physical geometry.
-let private controlsCard (model: FieldControls.Model) jawGeometry dispatch =
+let private controlsCard (model: FieldControls.Model) jawGeometry qa dispatch =
+    let geometryPasses = qa |> Result.map GeometryQa.passes |> Result.defaultValue false
     Html.aside [
         prop.className "card border border-base-300 bg-base-100 shadow-md"
         prop.children [
@@ -263,11 +278,13 @@ let private controlsCard (model: FieldControls.Model) jawGeometry dispatch =
                         ]
                     ]
 
+                    geometryQaSummary qa
+
                     Html.button [
                         prop.className "btn btn-primary mt-1 w-full"
-                        prop.disabled (not (FieldControls.canExport model))
+                        prop.disabled (not (FieldControls.canExport model && geometryPasses))
                         prop.onClick (fun _ ->
-                            if FieldControls.canExport model then
+                            if FieldControls.canExport model && geometryPasses then
                                 JscadGeometry.downloadStl
                                     (FieldControls.exportFileName model.Field)
                                     (Array.append jawGeometry trueBeamMlcBanksForExport))
@@ -368,6 +385,7 @@ let private viewerCard field jawGeometry selectedMode showDebugGeometry dispatch
 let view model dispatch =
     let field = model.FieldControls.Field
     let jawGeometry = trueBeamJawsForExport field
+    let qa = JscadGeometry.inspectBeamHead field jawGeometry trueBeamMlcBanksForExport
     let viewerJawGeometry = JscadGeometry.createViewerDisplay jawGeometry
 
     Html.main [
@@ -391,7 +409,7 @@ let view model dispatch =
                     Html.div [
                         prop.className "mt-4 grid items-start gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]"
                         prop.children [
-                            controlsCard model.FieldControls jawGeometry dispatch
+                            controlsCard model.FieldControls jawGeometry qa dispatch
                             viewerCard field viewerJawGeometry model.ViewerMode model.ShowDebugGeometry dispatch
                         ]
                     ]

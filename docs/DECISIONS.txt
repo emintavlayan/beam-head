@@ -484,3 +484,17 @@ Field-size controls
   - Invalid input retains the last valid geometry and disables export.
   - Jaw placements, the debug field outline and STL filename derive from the same validated JawField value.
   - The MLC delivery setting remains fixed at +/-201 mm at isocentre for every jaw field.
+
+Pre-export geometry validation
+  - Keep the 55 existing Domain tests as regression checks of parameters, placements and control behaviour.
+  - Add a separate Geometry suite: 15 native checker tests plus Fable/Node tests of production JSCAD solids.
+  - Inspect resolved physical polygon coordinates before the viewer mirror and STL serialization.
+  - Define expected source, field planes and component dimensions independently of the construction projection helpers.
+  - Validate aperture planes, projected edges, body extents, trajectories, pyramid geometry, MLC placement/envelope, convex surface structure, component separation and central-axis material paths.
+  - Sweep all 396 supported settings on each jaw axis; use representative rectangular fields for full component checks.
+  - Use a 0.000001 mm numerical construction tolerance; this is not a clinical acceptance threshold.
+  - Display measured/expected requirements in the app and prevent export when a declared construction requirement fails.
+  - Report the rounded-tip silhouette separately from the nominal +/-201 mm midplane setting.
+  - The current supplied MLC profile casts a point-source silhouette at approximately +/-197.953874 mm at isocentre, entering a 400 mm X jaw field by 2.046126 mm per symmetric side.
+  - This silhouette is a model observation, not a measured radiation-field edge; the MLC profile is retained for separate validation.
+  - STL serialization, vendor/profile agreement, material assignment and dose remain separate validation tasks.

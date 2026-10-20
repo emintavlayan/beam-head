@@ -131,8 +131,9 @@ module TrueBeamJawTests =
 
         Assert.Equal(-594.0<mm>, transformed.ApertureFaceMidpoint.Z)
 
+    /// Checks unrotated axial references without treating them as rotated solid bounds.
     [<Fact>]
-    let ``X jaw midplane and half thickness give supported upstream and downstream surfaces`` () =
+    let ``X jaw unrotated axial references are 367 and 445 millimetres`` () =
         let halfThickness = TrueBeamJaws.jawThickness / 2.0
         let upstreamSurface = TrueBeamJaws.xJawReferenceZ - halfThickness
         let downstreamSurface = TrueBeamJaws.xJawReferenceZ + halfThickness
@@ -316,8 +317,9 @@ module TrueBeamMlcTests =
         Assert.Equal(-33.5<mm>, profileMinimum.Z)
         Assert.Equal(33.5<mm>, profileMaximum.Z)
 
+    /// Checks declared metadata separately from geometric conformance of the reconstructed profile.
     [<Fact>]
-    let ``supported rounded tip parameters are retained`` () =
+    let ``declared rounded tip radius and outer angle are retained`` () =
         Assert.Equal(80.0<mm>, TrueBeamMlc.tipRadius)
         Assert.Equal(11.3, TrueBeamMlc.outerTipAngleDegrees)
 
@@ -405,9 +407,9 @@ module TrueBeamMlcTests =
         assertClose -201.0<mm> negativeProjection
         assertClose 201.0<mm> positiveProjection
 
-    /// Checks the separation between the current MLC tips and the jaw field edges.
+    /// Checks nominal midplane-reference clearance separately from the rounded-tip silhouette.
     [<Fact>]
-    let ``delivered MLC tips are 1 millimetre outside the jaw field edges`` () =
+    let ``MLC midplane tip references are 1 millimetre outside the 400 millimetre jaw field`` () =
         let clearance =
             TrueBeamMlc.deliveryTipAtIsocentre - (JawField.xSize JawField.fullSize / 2.0)
 

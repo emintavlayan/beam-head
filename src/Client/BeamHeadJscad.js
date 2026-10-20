@@ -109,6 +109,11 @@ export function createMlcBank(
     return colorize(palette.mlc, bank);
 }
 
+/// Reads physical polygon vertices after resolving every JSCAD solid transform.
+export function readSolidPolygons(solid) {
+    return geom3.toPolygons(solid).map(polygon => polygon.vertices.map(vertex => [...vertex]));
+}
+
 export function downloadStl(fileName, geometries) {
     const data = serialize({ binary: true }, ...geometries);
     const blob = new Blob(data, { type: "model/stl" });
@@ -188,10 +193,11 @@ const debugMarker = (point, radius, color) => colorize(
     translate(point, primitives.sphere({ radius })),
 );
 
-const nominalFieldPyramid = (source, corners) => colorize(
+/// Creates the field-light pyramid used by debug rendering and plane validation.
+export const createFieldLight = (source, corners) => colorize(
     palette.nominalFieldFill,
     primitives.polyhedron({
-        points: [source, ...corners],
+        points: [Array.from(source), ...corners.map(corner => Array.from(corner))],
         faces: [
             [0, 1, 2],
             [0, 2, 3],
@@ -199,7 +205,8 @@ const nominalFieldPyramid = (source, corners) => colorize(
             [0, 4, 1],
             [1, 4, 3, 2],
         ],
-        orientation: "outward",
+        // Face indices are outward for the display frame with the source above isocentre.
+        orientation: source[2] < corners[0][2] ? "inward" : "outward",
     }),
 );
 
@@ -241,7 +248,7 @@ const debugGeometryEntities = (
     ];
     const debugSolids = isBeamEyeView
         ? markerSolids
-        : [nominalFieldPyramid(source, nominalFieldCorners), ...markerSolids];
+        : [createFieldLight(source, nominalFieldCorners), ...markerSolids];
 
     return [
         ...entitiesFromSolids(solidOptions, ...debugSolids),
