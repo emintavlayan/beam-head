@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
@@ -14,4 +14,4 @@ function run(command, arguments_) {
 }
 
 run("dotnet", ["fable", path.join(directory, "Jscad", "Geometry.Jscad.Tests.fsproj"), "--outDir", output]);
-run("node", ["--loader", path.join(directory, "jscad-loader.mjs"), path.join(output, "Jscad.Tests.js")]);
+run("node", ["--loader", pathToFileURL(path.join(directory, "jscad-loader.mjs")).href, path.join(output, "Jscad.Tests.js")]);
