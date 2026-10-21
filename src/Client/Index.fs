@@ -80,7 +80,7 @@ let private currentScene model =
 let private scheduleAutomaticExport runId =
     Cmd.OfAsync.perform
         (fun () -> async {
-            do! Async.Sleep 1200
+            do! Async.Sleep 2000
             return runId
         })
         ()
