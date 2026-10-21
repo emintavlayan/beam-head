@@ -231,11 +231,9 @@ let private fieldSizeControl axis (model: FieldControls.Model) dispatch =
                         prop.children [
                             Html.input [
                                 prop.id inputId
-                                prop.type' "number"
+                                prop.type' "text"
+                                prop.custom ("inputMode", "decimal")
                                 prop.className "input input-bordered input-sm w-24 text-right"
-                                prop.min 0.5
-                                prop.max 40.0
-                                prop.step 0.1
                                 prop.value text
                                 prop.ariaLabel $"{name} field size in centimetres"
                                 prop.onChange (fun (value: string) -> dispatch (EditFieldSize(axis, value)))

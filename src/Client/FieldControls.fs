@@ -20,7 +20,10 @@ let presets = [ 100.0<mm>; 200.0<mm>; 300.0<mm>; 360.0<mm>; 400.0<mm> ]
 
 /// Formats a supported field dimension in centimetres with one decimal place.
 let formatCentimetres (size: float<mm>) =
-    (float size / 10.0).ToString("0.0", CultureInfo.InvariantCulture)
+    let wholeMillimetres = int (System.Math.Round(float size))
+    let centimetres = wholeMillimetres / 10
+    let millimetres = abs wholeMillimetres % 10
+    $"{centimetres}.{millimetres}"
 
 /// Creates square field controls at the full-size initial field.
 let init () = {
