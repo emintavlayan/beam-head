@@ -85,7 +85,7 @@ The browser compiles the exact native test source bodies with `BrowserTestSuppor
 
 Closing a manually opened dialog, clicking outside it or pressing Escape keeps an active run running. **Stop** cancels it. Native modal behaviour traps focus, makes the background inert and restores focus when closed. Reopening preserves progress and results.
 
-The export button remains available whenever the field input is valid. It opens the dialog and starts the same verification automatically. After a successful run, the three collapsed chapter results remain visible for 1.2 seconds; the captured solids are then downloaded and the dialog closes for the next field. A failed run remains open and never starts a download.
+The export button remains available whenever the field input is valid. It opens the dialog and starts the same verification automatically. After a successful run, the three collapsed chapter results remain visible for 2 seconds; the captured solids are then downloaded and the dialog closes for the next field. A failed run remains open and never starts a download.
 
 Results belong to the captured physical field. Changing its accepted dimensions marks results outdated and rejects pending callbacks. Invalid numeric drafts block running and export; restoring the same physical field keeps its evidence. Export requires a complete, passing run and passing measured geometry for the exact field. It serializes the captured solids that were measured. A partial, stopped, failed or outdated run cannot authorize export.
 
