@@ -9,6 +9,9 @@ type FactAttribute() =
 
 /// Supplies only the assertion operations used by the shared browser test bodies.
 type Assert =
+    /// Defines the browser-only tolerance for equivalent double-precision values.
+    static member private floatTolerance = 0.000000001
+
     /// Formats floating-point assertion values without exposing binary representation noise.
     static member private formatValue<'T>(value: 'T) =
         match box value with
@@ -16,9 +19,20 @@ type Assert =
         | :? float32 as number -> $"{number:F6}"
         | _ -> string value
 
-    /// Checks structural equality between the expected and measured values.
+    /// Compares floating-point values numerically and all other values structurally.
+    static member private valuesEqual<'T when 'T: equality>(expected: 'T, actual: 'T) =
+        match box expected, box actual with
+        | (:? float as expectedNumber), (:? float as actualNumber) ->
+            not (Double.IsNaN expectedNumber || Double.IsNaN actualNumber)
+            && abs (expectedNumber - actualNumber) <= Assert.floatTolerance
+        | (:? float32 as expectedNumber), (:? float32 as actualNumber) ->
+            not (Single.IsNaN expectedNumber || Single.IsNaN actualNumber)
+            && abs (expectedNumber - actualNumber) <= float32 Assert.floatTolerance
+        | _ -> expected = actual
+
+    /// Checks numerical float equality or structural equality for other values.
     static member Equal<'T when 'T: equality>(expected: 'T, actual: 'T) =
-        if expected <> actual then
+        if not (Assert.valuesEqual (expected, actual)) then
             failwith $"Expected {Assert.formatValue expected}; measured {Assert.formatValue actual}."
 
     /// Checks an expected true condition.
