@@ -49,7 +49,7 @@ let private requirePass report =
     require
         (GeometryQa.passes report)
         (failures
-         |> List.map (fun check -> $"{check.Component}: {check.Requirement}: {check.Actual}, expected {check.Expected}")
+         |> List.map (fun check -> $"{check.Component}: {check.Requirement}: {check.Actual:F6}, expected {check.Expected:F6}")
          |> String.concat "\n")
 
 /// Lists representative square and rectangular fields used by both runners.

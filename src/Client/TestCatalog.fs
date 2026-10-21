@@ -567,7 +567,7 @@ let private inspect selected () = result {
             None
         else
             failed
-            |> List.map (fun item -> $"{item.Component}: {item.Requirement}: {item.Actual}; expected {item.Expected}.")
+            |> List.map (fun item -> $"{item.Component}: {item.Requirement}: {item.Actual:F6}; expected {item.Expected:F6}.")
             |> String.concat "\n"
             |> Some
 

@@ -13,10 +13,6 @@ let private setOpen (element: obj) (visible: bool) : unit = jsNative
 [<Import("bindDialog", "./TestDialogInterop.js")>]
 let private bind (element: obj) (onClose: unit -> unit) : (unit -> unit) = jsNative
 
-/// Moves the scroll container and keyboard focus to the requested chapter.
-[<Import("scrollChapter", "./TestDialogInterop.js")>]
-let private scrollChapter (element: obj) (chapter: string) : unit = jsNative
-
 /// Renders a read-only status square that cannot be manually checked by the user.
 let private indicator status =
     let colors, text =
@@ -103,6 +99,7 @@ let private checkRow model active row =
 
     Html.details [
         prop.key row.Definition.Id
+        if status = "Failed" then prop.custom ("open", true)
         prop.custom ("data-check-id", row.Definition.Id)
         prop.custom ("data-check-status", status)
         prop.className "border-t border-slate-100"
@@ -158,17 +155,19 @@ let private checkRow model active row =
         ]
     ]
 
-/// Renders a numbered chapter with its scope and grouped statements.
-let private chapter model active kind (number: string) (title: string) (description: string) usesJscad =
+/// Renders a numbered collapsible chapter with its result count aligned at the right.
+let private chapter model active kind (number: string) (title: string) (description: string) =
     let rows = model.Checks |> List.filter (fun row -> row.Definition.Chapter = kind)
     let passed = rows |> List.filter checkPassed |> List.length
+    let failed = rows |> List.exists (fun row -> not row.Failures.IsEmpty)
 
-    Html.section [
+    Html.details [
         prop.custom ("data-chapter", number)
+        prop.custom ("open", true)
         prop.className "overflow-hidden rounded-xl border border-slate-200 bg-white"
         prop.children [
-            Html.div [
-                prop.className "flex flex-wrap items-start justify-between gap-4 bg-slate-50 px-5 py-5"
+            Html.summary [
+                prop.className "flex cursor-pointer list-none items-start justify-between gap-4 bg-slate-50 px-5 py-5"
                 prop.children [
                     Html.div [
                         prop.className "flex items-start gap-4"
@@ -180,7 +179,6 @@ let private chapter model active kind (number: string) (title: string) (descript
                             ]
                             Html.div [
                                 Html.h2 [
-                                    prop.tabIndex -1
                                     prop.className "text-lg font-semibold text-slate-900 outline-none"
                                     prop.text title
                                 ]
@@ -192,25 +190,21 @@ let private chapter model active kind (number: string) (title: string) (descript
                         ]
                     ]
                     Html.div [
-                        prop.className "flex flex-wrap items-center gap-2 text-xs"
-                        prop.children [
-                            Html.span [
-                                prop.className "rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600"
-                                prop.text (if usesJscad then "Uses JSCAD" else "Without JSCAD")
-                            ]
-                            Html.span [
-                                prop.className "rounded-full bg-slate-200 px-3 py-1 font-medium text-slate-700"
-                                prop.text (
-                                    if model.Phase = Outdated then
-                                        "Outdated"
-                                    else
-                                        $"{passed} / {rows.Length} passed"
-                                )
-                            ]
-                        ]
+                        prop.className "shrink-0 rounded-full bg-slate-200 px-3 py-1 text-xs font-medium tabular-nums text-slate-700"
+                        prop.text (
+                            if model.Phase = Outdated then
+                                "Outdated"
+                            else
+                                $"{passed} / {rows.Length} passed"
+                        )
                     ]
                 ]
             ]
+            if failed then
+                Html.p [
+                    prop.className "border-b border-red-100 bg-red-50 px-5 py-2 text-xs font-medium text-red-700"
+                    prop.text "One or more checks failed. Failure details are open below."
+                ]
             for group in rows |> List.map _.Definition.Group |> List.distinct do
                 Html.div [
                     Html.h3 [
@@ -360,20 +354,6 @@ let View
                         prop.value progress
                         prop.ariaLabel "Test progress"
                     ]
-                    Html.nav [
-                        prop.ariaLabel "Test chapters"
-                        prop.className "mt-3 flex flex-wrap gap-1"
-                        prop.children [
-                            for number, title in [ "01", "Domain"; "02", "Geometry checker"; "03", "JSCAD geometry" ] do
-                                Html.button [
-                                    prop.className "btn btn-ghost btn-xs"
-                                    prop.onClick (fun _ ->
-                                        element.current
-                                        |> Option.iter (fun dialog -> scrollChapter (box dialog) number))
-                                    prop.text $"{number}  {title}"
-                                ]
-                        ]
-                    ]
                 ]
             ]
             Html.div [
@@ -410,7 +390,6 @@ let View
                         "01"
                         "Domain tests"
                         "Parameters, calculated placements, coordinate transforms and field controls."
-                        false
                     chapter
                         model
                         active
@@ -418,7 +397,6 @@ let View
                         "02"
                         "Geometry checker tests"
                         "Known geometry and deliberate defects check the measuring algorithms themselves."
-                        false
                     chapter
                         model
                         active
@@ -426,7 +404,6 @@ let View
                         "03"
                         "JSCAD geometry tests"
                         "Production constructors build real solids whose resolved surfaces must meet the geometric requirements."
-                        true
                 ]
             ]
             Html.footer [
