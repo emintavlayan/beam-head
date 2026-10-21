@@ -13,6 +13,7 @@ type Model = {
     Tests: TestSession.Model
     Workflow: TestCatalog.Workflow option
     TestError: string option
+    PendingExport: int option
 }
 
 /// Represents edits, dialog actions and actual asynchronous test results.
@@ -27,7 +28,10 @@ type Msg =
     | SetSquareField of bool
     | RunTests
     | StopTests
+    | RequestExport
     | TestStepFinished of int * int * string * Result<TestSession.Evidence, string>
+    | AutomaticExportReady of int
+    | AutomaticExportFinished of int * Result<unit, string>
 
 /// Creates the workbench without assuming any validation result.
 let init () =
@@ -39,6 +43,7 @@ let init () =
         Tests = TestSession.init TestCatalog.definitions
         Workflow = None
         TestError = None
+        PendingExport = None
     },
     Cmd.none
 
@@ -66,6 +71,64 @@ let private nextTestStep model =
             (fun result -> TestStepFinished(runId, position, step.CheckId, result))
     | _ -> Cmd.none
 
+/// Finds captured solids belonging to the currently selected field.
+let private currentScene model =
+    model.Workflow
+    |> Option.filter (fun workflow -> workflow.Scene.Field = model.FieldControls.Field)
+
+/// Waits briefly so a successful automatic verification remains visible before download.
+let private scheduleAutomaticExport runId =
+    Cmd.OfAsync.perform
+        (fun () -> async {
+            do! Async.Sleep 1200
+            return runId
+        })
+        ()
+        AutomaticExportReady
+
+/// Downloads the exact solids captured and measured by the successful run.
+let private downloadCapturedScene runId field (workflow: TestCatalog.Workflow) =
+    Cmd.OfAsync.perform
+        (fun () -> async {
+            return
+                try
+                    JscadGeometry.downloadStl
+                        (FieldControls.exportFileName field)
+                        (Array.append workflow.Scene.Jaws workflow.Scene.Banks)
+                    Ok ()
+                with error ->
+                    Error error.Message
+        })
+        ()
+        (fun result -> AutomaticExportFinished(runId, result))
+
+/// Starts a fresh verification run for manual review or automatic export.
+let private startTests automaticExport model =
+    let starting =
+        TestSession.start model.FieldControls.Field TestCatalog.definitions model.Tests
+
+    try
+        let workflow = TestCatalog.prepare model.FieldControls.Field
+        let updated = {
+            model with
+                ShowTests = true
+                Tests = starting
+                Workflow = Some workflow
+                TestError = None
+                PendingExport = if automaticExport then Some starting.RunId else None
+        }
+        updated, nextTestStep updated
+    with error ->
+        {
+            model with
+                ShowTests = true
+                Tests = TestSession.cancel starting
+                Workflow = None
+                TestError = Some error.Message
+                PendingExport = None
+        },
+        Cmd.none
+
 /// Revokes evidence only when the accepted physical field actually changes.
 let private changeField (change: FieldControls.Model -> FieldControls.Model) (model: Model) =
     let controls = change model.FieldControls
@@ -79,6 +142,7 @@ let private changeField (change: FieldControls.Model -> FieldControls.Model) (mo
                 Tests = TestSession.invalidate model.Tests
                 Workflow = None
                 TestError = None
+                PendingExport = None
         }
 
 /// Applies edits and accepts results only from the expected active test run.
@@ -101,35 +165,33 @@ let update msg model =
         {
             model with
                 Tests = TestSession.cancel model.Tests
+                PendingExport = None
         },
         Cmd.none
     | RunTests when
         model.Tests.Phase <> TestSession.Running
         && FieldControls.canExport model.FieldControls
         ->
-        let starting =
-            TestSession.start model.FieldControls.Field TestCatalog.definitions model.Tests
-
-        try
-            let workflow = TestCatalog.prepare model.FieldControls.Field
-
-            let updated = {
-                model with
-                    Tests = starting
-                    Workflow = Some workflow
-                    TestError = None
-            }
-
-            updated, nextTestStep updated
-        with error ->
+        startTests false model
+    | RunTests -> model, Cmd.none
+    | RequestExport when FieldControls.canExport model.FieldControls ->
+        match model.Tests.Phase, currentScene model with
+        | TestSession.Running, Some _ ->
             {
                 model with
-                    Tests = TestSession.cancel starting
-                    Workflow = None
-                    TestError = Some error.Message
+                    ShowTests = true
+                    PendingExport = Some model.Tests.RunId
             },
             Cmd.none
-    | RunTests -> model, Cmd.none
+        | _, Some workflow when TestSession.canExport model.FieldControls.Field model.Tests ->
+            let updated = {
+                model with
+                    ShowTests = true
+                    PendingExport = Some model.Tests.RunId
+            }
+            updated, scheduleAutomaticExport model.Tests.RunId
+        | _ -> startTests true model
+    | RequestExport -> model, Cmd.none
     | TestStepFinished(runId, position, checkId, outcome) ->
         if
             model.Tests.Phase <> TestSession.Running
@@ -143,7 +205,39 @@ let update msg model =
                     Tests = TestSession.completeStep runId position checkId outcome model.Tests
             }
 
-            updated, nextTestStep updated
+            if updated.Tests.Phase = TestSession.Completed then
+                match updated.PendingExport with
+                | Some pendingRun when
+                    pendingRun = runId
+                    && TestSession.canExport updated.FieldControls.Field updated.Tests
+                    && (currentScene updated |> Option.isSome)
+                    ->
+                    updated, scheduleAutomaticExport runId
+                | Some _ -> { updated with PendingExport = None }, Cmd.none
+                | None -> updated, Cmd.none
+            else
+                updated, nextTestStep updated
+    | AutomaticExportReady runId when model.PendingExport = Some runId ->
+        match currentScene model with
+        | Some workflow when TestSession.canExport model.FieldControls.Field model.Tests ->
+            model, downloadCapturedScene runId model.FieldControls.Field workflow
+        | _ -> { model with PendingExport = None }, Cmd.none
+    | AutomaticExportReady _ -> model, Cmd.none
+    | AutomaticExportFinished(runId, Ok ()) when model.PendingExport = Some runId ->
+        {
+            model with
+                ShowTests = false
+                PendingExport = None
+        },
+        Cmd.none
+    | AutomaticExportFinished(runId, Error error) when model.PendingExport = Some runId ->
+        {
+            model with
+                TestError = Some error
+                PendingExport = None
+        },
+        Cmd.none
+    | AutomaticExportFinished _ -> model, Cmd.none
 
 /// Creates export solids from the selected jaw field.
 let private trueBeamJawsForExport field =
@@ -323,12 +417,7 @@ let private testSummary field tests dispatch =
     ]
 
 /// Renders field editing controls and exports the selected physical geometry.
-let private controlsCard (model: FieldControls.Model) tests (workflow: TestCatalog.Workflow option) dispatch =
-    let checkedScene =
-        workflow |> Option.filter (fun item -> item.Scene.Field = model.Field)
-
-    let geometryPasses = TestSession.canExport model.Field tests && checkedScene.IsSome
-
+let private controlsCard (model: FieldControls.Model) tests pendingExport dispatch =
     Html.aside [
         prop.className "card border border-base-300 bg-base-100 shadow-md"
         prop.children [
@@ -399,16 +488,9 @@ let private controlsCard (model: FieldControls.Model) tests (workflow: TestCatal
 
                     Html.button [
                         prop.className "btn btn-primary mt-1 w-full"
-                        prop.disabled (not (FieldControls.canExport model && geometryPasses))
-                        prop.onClick (fun _ ->
-                            if FieldControls.canExport model && geometryPasses then
-                                match checkedScene with
-                                | Some item ->
-                                    JscadGeometry.downloadStl
-                                        (FieldControls.exportFileName model.Field)
-                                        (Array.append item.Scene.Jaws item.Scene.Banks)
-                                | None -> ())
-                        prop.text "Export beam head STL"
+                        prop.disabled (not (FieldControls.canExport model) || (pendingExport |> Option.isSome))
+                        prop.onClick (fun _ -> dispatch RequestExport)
+                        prop.text (if pendingExport |> Option.isSome then "Verifying geometry…" else "Export beam head STL")
                     ]
                 ]
             ]
@@ -539,7 +621,7 @@ let view model dispatch =
                     Html.div [
                         prop.className "mt-4 grid items-start gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]"
                         prop.children [
-                            controlsCard model.FieldControls model.Tests model.Workflow dispatch
+                            controlsCard model.FieldControls model.Tests model.PendingExport dispatch
                             viewerCard field viewerJawGeometry model.ViewerMode model.ShowDebugGeometry dispatch
                         ]
                     ]
@@ -551,6 +633,7 @@ let view model dispatch =
                 FieldControls.canExport model.FieldControls,
                 model.Tests,
                 model.TestError,
+                (model.PendingExport |> Option.isSome),
                 (fun () -> dispatch RunTests),
                 (fun () -> dispatch StopTests),
                 (fun () -> dispatch (SetTestsVisible false))

@@ -40,10 +40,7 @@ export function bindDialog(dialog, onClose) {
 }
 
 /// Moves within the dialog to a chapter and gives its heading keyboard focus.
-export function scrollChapter(dialog, chapter) {
-    const section = dialog.querySelector(`[data-chapter="${chapter}"]`);
-    if (section) {
-        section.scrollIntoView({ block: "start" });
-        section.querySelector("h2")?.focus({ preventScroll: true });
-    }
+export function scrollActiveCheck(dialog, checkId) {
+    const check = dialog.querySelector(`[data-check-id="${checkId}"]`);
+    check?.scrollIntoView({ block: "center", behavior: "smooth" });
 }

@@ -2,6 +2,16 @@ module JscadChecks
 
 open BeamHead.Domain
 
+/// Formats one diagnostic number without relying on Fable format specifiers.
+let private formatFixed decimals value =
+    let scale = pown 10 decimals
+    let scaled = int (System.Math.Round(value * float scale))
+    let absolute = abs scaled
+    let fraction = string (absolute % scale)
+    let padding = String.replicate (decimals - fraction.Length) "0"
+    let sign = if scaled < 0 then "-" else ""
+    $"{sign}{absolute / scale}.{padding}{fraction}"
+
 /// Fails a geometry test with a specific geometric requirement.
 let private require condition message =
     if not condition then
@@ -49,7 +59,8 @@ let private requirePass report =
     require
         (GeometryQa.passes report)
         (failures
-         |> List.map (fun check -> $"{check.Component}: {check.Requirement}: {check.Actual:F6}, expected {check.Expected:F6}")
+         |> List.map (fun check ->
+             $"{check.Component}: {check.Requirement}: {formatFixed 6 check.Actual}, expected {formatFixed 6 check.Expected}")
          |> String.concat "\n")
 
 /// Lists representative square and rectangular fields used by both runners.

@@ -5,6 +5,16 @@ open BeamHead.Domain.Tests
 open FsToolkit.ErrorHandling
 open TestSession
 
+/// Formats one diagnostic number without relying on Fable format specifiers.
+let private formatFixed decimals value =
+    let scale = pown 10 decimals
+    let scaled = int (System.Math.Round(value * float scale))
+    let absolute = abs scaled
+    let fraction = string (absolute % scale)
+    let padding = String.replicate (decimals - fraction.Length) "0"
+    let sign = if scaled < 0 then "-" else ""
+    $"{sign}{absolute / scale}.{padding}{fraction}"
+
 /// Holds the exact physical solids measured by a run and later used for export.
 type Scene = {
     Field: JawField
@@ -567,7 +577,8 @@ let private inspect selected () = result {
             None
         else
             failed
-            |> List.map (fun item -> $"{item.Component}: {item.Requirement}: {item.Actual:F6}; expected {item.Expected:F6}.")
+            |> List.map (fun item ->
+                $"{item.Component}: {item.Requirement}: {formatFixed 6 item.Actual}; expected {formatFixed 6 item.Expected}.")
             |> String.concat "\n"
             |> Some
 

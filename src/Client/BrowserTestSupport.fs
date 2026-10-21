@@ -12,11 +12,21 @@ type Assert =
     /// Defines the browser-only tolerance for equivalent double-precision values.
     static member private floatTolerance = 0.000000001
 
+    /// Formats one browser number without relying on Fable format specifiers.
+    static member private formatFixed decimals value =
+        let scale = pown 10 decimals
+        let scaled = int (Math.Round(value * float scale))
+        let absolute = abs scaled
+        let fraction = string (absolute % scale)
+        let padding = String.replicate (decimals - fraction.Length) "0"
+        let sign = if scaled < 0 then "-" else ""
+        $"{sign}{absolute / scale}.{padding}{fraction}"
+
     /// Formats floating-point assertion values without exposing binary representation noise.
     static member private formatValue<'T>(value: 'T) =
         match box value with
-        | :? float as number -> $"{number:F6}"
-        | :? float32 as number -> $"{number:F6}"
+        | :? float as number -> Assert.formatFixed 6 number
+        | :? float32 as number -> Assert.formatFixed 6 (float number)
         | _ -> string value
 
     /// Compares floating-point values numerically and all other values structurally.

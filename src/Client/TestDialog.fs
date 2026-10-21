@@ -13,6 +13,20 @@ let private setOpen (element: obj) (visible: bool) : unit = jsNative
 [<Import("bindDialog", "./TestDialogInterop.js")>]
 let private bind (element: obj) (onClose: unit -> unit) : (unit -> unit) = jsNative
 
+/// Scrolls the active check into view when test execution moves forward.
+[<Import("scrollActiveCheck", "./TestDialogInterop.js")>]
+let private scrollActiveCheck (element: obj) (checkId: string) : unit = jsNative
+
+/// Formats a browser-facing number with a fixed number of decimal places.
+let private formatFixed decimals value =
+    let scale = pown 10 decimals
+    let scaled = int (System.Math.Round(value * float scale))
+    let absolute = abs scaled
+    let fraction = string (absolute % scale)
+    let padding = String.replicate (decimals - fraction.Length) "0"
+    let sign = if scaled < 0 then "-" else ""
+    $"{sign}{absolute / scale}.{padding}{fraction}"
+
 /// Renders a read-only status square that cannot be manually checked by the user.
 let private indicator status =
     let colors, text =
@@ -74,9 +88,9 @@ let private measuredValues report =
                                 )
                                 prop.children [
                                     Html.td $"{item.Component}: {item.Requirement}"
-                                    Html.td $"{item.Actual:F6}"
-                                    Html.td $"{item.Expected:F6}"
-                                    Html.td $"{item.Tolerance:F6}"
+                                    Html.td (formatFixed 6 item.Actual)
+                                    Html.td (formatFixed 6 item.Expected)
+                                    Html.td (formatFixed 6 item.Tolerance)
                                     Html.td [
                                         indicator (
                                             if GeometryQa.meetsRequirement item then
@@ -160,10 +174,24 @@ let private chapter model active kind (number: string) (title: string) (descript
     let rows = model.Checks |> List.filter (fun row -> row.Definition.Chapter = kind)
     let passed = rows |> List.filter checkPassed |> List.length
     let failed = rows |> List.exists (fun row -> not row.Failures.IsEmpty)
+    let activeInChapter =
+        active
+        |> Option.exists (fun checkId -> rows |> List.exists (fun row -> row.Definition.Id = checkId))
+    let complete = rows |> List.forall (fun row -> row.Completed = row.Definition.Steps)
+    let openChapter = failed || (model.Phase = Running && activeInChapter)
+    let resultClass, resultText =
+        if model.Phase = Outdated then
+            "bg-amber-100 text-amber-800", "Outdated"
+        elif failed then
+            "bg-red-100 text-red-800", $"× {rows.Length - passed} failed"
+        elif complete then
+            "bg-emerald-100 text-emerald-800", $"✓ {passed} / {rows.Length} passed"
+        else
+            "bg-slate-200 text-slate-700", $"{passed} / {rows.Length} passed"
 
     Html.details [
         prop.custom ("data-chapter", number)
-        prop.custom ("open", true)
+        if openChapter then prop.custom ("open", true)
         prop.className "overflow-hidden rounded-xl border border-slate-200 bg-white"
         prop.children [
             Html.summary [
@@ -190,13 +218,8 @@ let private chapter model active kind (number: string) (title: string) (descript
                         ]
                     ]
                     Html.div [
-                        prop.className "shrink-0 rounded-full bg-slate-200 px-3 py-1 text-xs font-medium tabular-nums text-slate-700"
-                        prop.text (
-                            if model.Phase = Outdated then
-                                "Outdated"
-                            else
-                                $"{passed} / {rows.Length} passed"
-                        )
+                        prop.className $"shrink-0 rounded-full px-3 py-1 text-xs font-medium tabular-nums {resultClass}"
+                        prop.text resultText
                     ]
                 ]
             ]
@@ -227,6 +250,7 @@ let View
         inputsValid: bool,
         model: TestSession.Model,
         startError: string option,
+        automaticExport: bool,
         onRun: unit -> unit,
         onStop: unit -> unit,
         onClose: unit -> unit
@@ -262,6 +286,14 @@ let View
             0.0
         else
             100.0 * float model.NextStep / float model.TotalSteps
+
+    React.useEffect (
+        (fun () ->
+            match element.current, active with
+            | Some dialog, Some checkId -> scrollActiveCheck (box dialog) checkId
+            | _ -> ()),
+        [| box active |]
+    )
 
     Html.dialog [
         prop.ref element
@@ -321,10 +353,12 @@ let View
                                         ]
                                     Html.button [
                                         prop.className "btn btn-primary btn-sm"
-                                        prop.disabled (model.Phase = Running || not inputsValid)
+                                        prop.disabled (model.Phase = Running || not inputsValid || automaticExport)
                                         prop.onClick (fun _ -> onRun ())
                                         prop.text (
-                                            if model.Phase = Running then
+                                            if automaticExport then
+                                                "Preparing export…"
+                                            elif model.Phase = Running then
                                                 "Running tests…"
                                             else
                                                 "Run all tests"
@@ -367,18 +401,23 @@ let View
                             prop.className "text-sm text-red-700"
                             prop.text "Correct the field dimensions before running tests."
                         ]
+                    if automaticExport then
+                        Html.p [
+                            prop.className "rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800"
+                            prop.text "The STL will download automatically after successful verification."
+                        ]
                     match model.Geometry with
                     | Some report when model.Phase = Completed ->
                         Html.div [
                             prop.className "rounded-lg border border-slate-200 bg-white p-3 text-sm"
                             prop.children [
                                 Html.p
-                                    $"Rounded MLC shadow half-width: {float report.MlcShadowHalfWidth:F3} mm at isocentre."
+                                    $"Rounded MLC shadow half-width: {formatFixed 3 (float report.MlcShadowHalfWidth)} mm at isocentre."
                                 if report.MlcFieldClearance < 0.0<mm> then
                                     Html.p [
                                         prop.className "mt-2 text-amber-800"
                                         prop.text
-                                            $"Geometric observation: the rounded MLC shadow enters the requested X opening by {float (-report.MlcFieldClearance):F3} mm. This is separate from construction pass/fail."
+                                            $"Geometric observation: the rounded MLC shadow enters the requested X opening by {formatFixed 3 (float (-report.MlcFieldClearance))} mm. This is separate from construction pass/fail."
                                     ]
                             ]
                         ]
@@ -409,7 +448,9 @@ let View
             Html.footer [
                 prop.className "shrink-0 border-t border-slate-200 bg-white px-5 py-3 text-xs leading-5 text-slate-500"
                 prop.text (
-                    if model.Phase = Running then
+                    if automaticExport then
+                        "Verification is required for export. The STL downloads automatically after all checks pass."
+                    elif model.Phase = Running then
                         "Closing this window keeps the tests running. Use Stop to cancel."
                     else
                         "These checks validate the listed model geometry. Physical-machine and dose validation remain separate."

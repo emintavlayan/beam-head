@@ -71,7 +71,7 @@ Install the repository's .NET tools and client dependencies first if needed (`do
 
 ## Test dialog
 
-Use **Tests** in the navigation bar or **Open tests** beside export. A large native modal keeps the geometry workbench behind it. The action header and progress remain visible above one vertically scrolling list. Chapter shortcuts move within the list.
+Use **Tests** in the navigation bar for a manual review, or click **Export beam head STL** to verify before download. A large native modal keeps the geometry workbench behind it. The action header and progress remain visible above one vertically scrolling list. The active check scrolls into view. Passing chapters collapse to a green result header; failed chapters remain open with their failure reasons visible.
 
 | Chapter | Visible checks | Execution |
 | --- | ---: | --- |
@@ -83,7 +83,9 @@ Use **Tests** in the navigation bar or **Open tests** beside export. A large nat
 
 The browser compiles the exact native test source bodies with `BrowserTestSupport.fs`, a small adapter for the assertion operations those tests use. It does not run the .NET/xUnit runner in the browser. Native test projects continue to use real xUnit. `JscadChecks.fs` contains the shared production test functions used by both the browser and Node.
 
-Closing the dialog, clicking outside it or pressing Escape keeps an active run running. **Stop** cancels it. Native modal behaviour traps focus, makes the background inert and restores focus when closed. Reopening preserves progress and results.
+Closing a manually opened dialog, clicking outside it or pressing Escape keeps an active run running. **Stop** cancels it. Native modal behaviour traps focus, makes the background inert and restores focus when closed. Reopening preserves progress and results.
+
+The export button remains available whenever the field input is valid. It opens the dialog and starts the same verification automatically. After a successful run, the three collapsed chapter results remain visible for 1.2 seconds; the captured solids are then downloaded and the dialog closes for the next field. A failed run remains open and never starts a download.
 
 Results belong to the captured physical field. Changing its accepted dimensions marks results outdated and rejects pending callbacks. Invalid numeric drafts block running and export; restoring the same physical field keeps its evidence. Export requires a complete, passing run and passing measured geometry for the exact field. It serializes the captured solids that were measured. A partial, stopped, failed or outdated run cannot authorize export.
 
