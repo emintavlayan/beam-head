@@ -391,33 +391,8 @@ let private squareFieldToggle enabled dispatch =
         ]
     ]
 
-/// Shows verification state without automatically rerunning tests during rendering.
-let private testSummary field tests dispatch =
-    Html.div [
-        prop.className "rounded-box border border-base-300 p-3 text-sm"
-        prop.children [
-            Html.p [
-                prop.key "status"
-                prop.className "font-medium"
-                prop.text (TestSession.label tests)
-            ]
-            if TestSession.canExport field tests then
-                Html.p [
-                    prop.key "field"
-                    prop.className "mt-1 text-xs text-base-content/60"
-                    prop.text $"Verified field: {TestSession.fieldLabel field}"
-                ]
-            Html.button [
-                prop.key "open-tests"
-                prop.className "btn btn-outline btn-sm mt-3 w-full"
-                prop.onClick (fun _ -> dispatch (SetTestsVisible true))
-                prop.text "Open tests"
-            ]
-        ]
-    ]
-
 /// Renders field editing controls and exports the selected physical geometry.
-let private controlsCard (model: FieldControls.Model) tests pendingExport dispatch =
+let private controlsCard (model: FieldControls.Model) pendingExport dispatch =
     Html.aside [
         prop.className "card border border-base-300 bg-base-100 shadow-md"
         prop.children [
@@ -484,8 +459,6 @@ let private controlsCard (model: FieldControls.Model) tests pendingExport dispat
                         ]
                     ]
 
-                    testSummary model.Field tests dispatch
-
                     Html.button [
                         prop.className "btn btn-primary mt-1 w-full"
                         prop.disabled (not (FieldControls.canExport model) || (pendingExport |> Option.isSome))
@@ -493,6 +466,36 @@ let private controlsCard (model: FieldControls.Model) tests pendingExport dispat
                         prop.text (if pendingExport |> Option.isSome then "Verifying geometry…" else "Export beam head STL")
                     ]
                 ]
+            ]
+        ]
+    ]
+
+/// Renders the single navigation entry for opening tests and reading their current result.
+let private testsNavigationButton (field: JawField) (tests: TestSession.Model) dispatch =
+    let failed =
+        tests.Checks
+        |> List.filter (fun row -> not row.Failures.IsEmpty)
+        |> List.length
+
+    let statusClass, statusText =
+        match tests.Phase with
+        | TestSession.Completed when TestSession.canExport field tests ->
+            "badge-success", $"{tests.Checks.Length} / {tests.Checks.Length} passed"
+        | TestSession.Completed -> "badge-error", $"{failed} failed"
+        | TestSession.Running -> "badge-info", $"{tests.NextStep} / {tests.TotalSteps}"
+        | TestSession.Outdated -> "badge-warning", "Outdated"
+        | TestSession.Cancelled -> "badge-neutral", "Stopped"
+        | TestSession.NotRun -> "badge-ghost", "Not run"
+
+    Html.button [
+        prop.id "tests-trigger"
+        prop.className "btn btn-outline btn-sm gap-2"
+        prop.onClick (fun _ -> dispatch (SetTestsVisible true))
+        prop.children [
+            Html.span "Tests"
+            Html.span [
+                prop.className $"badge badge-sm {statusClass}"
+                prop.text statusText
             ]
         ]
     ]
@@ -607,12 +610,7 @@ let view model dispatch =
                             Html.div [
                                 prop.className "navbar-end"
                                 prop.children [
-                                    Html.button [
-                                        prop.id "tests-trigger"
-                                        prop.className "btn btn-outline btn-sm"
-                                        prop.onClick (fun _ -> dispatch (SetTestsVisible true))
-                                        prop.text "Tests"
-                                    ]
+                                    testsNavigationButton field model.Tests dispatch
                                 ]
                             ]
                         ]
@@ -621,7 +619,7 @@ let view model dispatch =
                     Html.div [
                         prop.className "mt-4 grid items-start gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]"
                         prop.children [
-                            controlsCard model.FieldControls model.Tests model.PendingExport dispatch
+                            controlsCard model.FieldControls model.PendingExport dispatch
                             viewerCard field viewerJawGeometry model.ViewerMode model.ShowDebugGeometry dispatch
                         ]
                     ]

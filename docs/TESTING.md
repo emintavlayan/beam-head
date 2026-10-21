@@ -89,7 +89,7 @@ The export button remains available whenever the field input is valid. It opens 
 
 Results belong to the captured physical field. Changing its accepted dimensions marks results outdated and rejects pending callbacks. Invalid numeric drafts block running and export; restoring the same physical field keeps its evidence. Export requires a complete, passing run and passing measured geometry for the exact field. It serializes the captured solids that were measured. A partial, stopped, failed or outdated run cannot authorize export.
 
-The rounded-tip field-clearance observation is displayed separately and does not disable export. A construction pass is evidence for the listed geometry requirements, not a claim of physical-machine or dose agreement.
+The rounded-tip field-clearance warning is displayed only when the silhouette enters the requested X opening; it does not disable export. A construction pass is evidence for the listed geometry requirements, not a claim of physical-machine or dose agreement.
 
 `tests/Client/Client.Tests.fsproj` adds 14 native xUnit tests for snapshot capture, run identity, callback order, invalidation, cancellation, persistent failures, measured evidence and export permission. These verify the workflow rather than adding another end-user chapter.
 

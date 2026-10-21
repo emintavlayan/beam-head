@@ -407,19 +407,11 @@ let View
                             prop.text "The STL will download automatically after successful verification."
                         ]
                     match model.Geometry with
-                    | Some report when model.Phase = Completed ->
-                        Html.div [
-                            prop.className "rounded-lg border border-slate-200 bg-white p-3 text-sm"
-                            prop.children [
-                                Html.p
-                                    $"Rounded MLC shadow half-width: {formatFixed 3 (float report.MlcShadowHalfWidth)} mm at isocentre."
-                                if report.MlcFieldClearance < 0.0<mm> then
-                                    Html.p [
-                                        prop.className "mt-2 text-amber-800"
-                                        prop.text
-                                            $"Geometric observation: the rounded MLC shadow enters the requested X opening by {formatFixed 3 (float (-report.MlcFieldClearance))} mm. This is separate from construction pass/fail."
-                                    ]
-                            ]
+                    | Some report when model.Phase = Completed && report.MlcFieldClearance < 0.0<mm> ->
+                        Html.p [
+                            prop.className "rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800"
+                            prop.text
+                                $"Rounded MLC warning: shadow half-width is {formatFixed 3 (float report.MlcShadowHalfWidth)} mm at isocentre and enters the requested X opening by {formatFixed 3 (float (-report.MlcFieldClearance))} mm."
                         ]
                     | _ -> Html.none
                     chapter
