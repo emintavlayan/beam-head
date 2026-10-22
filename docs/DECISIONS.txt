@@ -525,4 +525,6 @@ Corrected rounded-tip placement from field-light observation
   - A profile point at local Z = +15 mm becomes tangent to the 201 mm setting ray.
   - The tangent remains 1 mm outside the +/-200 mm maximum jaw-field edge, consistent with the no-shading field-light observation.
   - Geometry QA now treats 201 mm rounded-tip tangency as a construction requirement for each bank.
+  - The production JSCAD suite constructs an independent 402 x 402 mm source pyramid and requires both rounded bank surfaces to touch its X side planes without entering them.
+  - Contact vertices must span the pyramid's Y face so an isolated coplanar point cannot satisfy the contact check.
   - The previous intrusion/clearance observation and user-facing warning are removed.

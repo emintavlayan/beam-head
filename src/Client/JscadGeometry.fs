@@ -108,11 +108,19 @@ let readSurface solid : IsocentreFramePoint list list =
 [<Import("createFieldLight", "./BeamHeadJscad.js")>]
 let private createFieldLight (source: float array) (corners: float array array) : obj = jsNative
 
-/// Reads the actual field-light solid for geometric tests and live validation.
-let fieldLightSurface field =
-    let corners = FieldLight.corners field |> Array.map (fun point -> [|float point.X; float point.Y; float point.Z|])
+/// Creates a physical field-light pyramid from explicit isocentre-plane dimensions.
+let fieldLightSurfaceForDimensions (xSize: float<mm>) (ySize: float<mm>) =
+    let halfX = xSize / 2.0
+    let halfY = ySize / 2.0
+    let corners =
+        [| -halfX, -halfY; halfX, -halfY; halfX, halfY; -halfX, halfY |]
+        |> Array.map (fun (x, y) -> [|float x; float y; 0.0|])
     let source = IsocentreFrame.source
     createFieldLight [|float source.X; float source.Y; float source.Z|] corners |> readSurface
+
+/// Reads the actual field-light solid for geometric tests and live validation.
+let fieldLightSurface field =
+    fieldLightSurfaceForDimensions (JawField.xSize field) (JawField.ySize field)
 
 /// Inspects the actual generated solids against the selected field and geometric specification.
 let inspectBeamHead field (jaws: obj array) (banks: obj array) =

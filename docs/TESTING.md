@@ -38,7 +38,7 @@ The expected measurements are specified independently in `GeometryQa`; they do n
 | Surface structure | Face planarity and convex polygon winding, exactly one oppositely directed edge mate, and every vertex inside every outward face half-space |
 | Component separation | Separating-axis test using face normals and edge-cross-edge axes for each pair of convex components |
 | Central axis | Source-ray material path through each component is zero |
-| Rounded-tip tangent | Minimum signed X projection of each actual bank is 201 mm at isocentre, 1 mm outside the maximum jaw field |
+| Rounded-tip tangent | A production-JSCAD 402 x 402 mm source pyramid stays outside both banks, touches each rounded surface at zero distance and overlaps the tangent edge across its Y face |
 
 The checker assumes the supported convex jaw and bank envelopes. Convexity and outward half-spaces are checked; this is not a general-purpose validator for arbitrary concave CAD.
 

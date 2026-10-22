@@ -559,7 +559,7 @@ let private productionDefinitions = [
         Id = "rounded-tangent"
         Chapter = JscadGeometry
         Group = "MLC field edge"
-        Statement = "Both rounded MLC surfaces match the reported leaf setting"
+        Statement = "A 40.2 cm field-light pyramid touches both rounded MLC surfaces"
         Steps = 1
     }
 ]

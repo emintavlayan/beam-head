@@ -316,6 +316,7 @@ let private fieldLightMutations () =
 /// Checks that each generated rounded bank is tangent at the reported leaf setting.
 let private roundedTipTangent () =
     let jaws, banks = geometry JawField.fullSize
+    let _, bankSurfaces = surfaces jaws banks
     let report = JscadGeometry.inspectBeamHead JawField.fullSize jaws banks |> valid
     let tangents =
         report.Measurements
@@ -323,6 +324,43 @@ let private roundedTipTangent () =
 
     require (tangents.Length = 2) "Both MLC banks must provide rounded-tip tangent evidence."
     require (tangents |> List.forall GeometryQa.meetsRequirement) "A rounded MLC bank does not match the reported leaf setting."
+
+    let pyramid =
+        JscadGeometry.fieldLightSurfaceForDimensions 402.0<mm> 402.0<mm>
+
+    let pyramidVertices = pyramid |> List.collect id
+    let sourceZ = pyramidVertices |> List.minBy _.Z |> _.Z |> float
+    let baseVertices = pyramidVertices |> List.filter (fun point -> abs (float point.Z) <= GeometryQa.tolerance)
+    let halfX = baseVertices |> List.map (fun point -> abs (float point.X)) |> List.max
+    let halfY = baseVertices |> List.map (fun point -> abs (float point.Y)) |> List.max
+    let xSlope = halfX / -sourceZ
+
+    require (abs (halfX - 201.0) <= GeometryQa.tolerance) "The tangent pyramid X half-width is not 201 mm."
+    require (abs (halfY - 201.0) <= GeometryQa.tolerance) "The tangent pyramid Y half-width is not 201 mm."
+
+    for side, surface in bankSurfaces do
+        let sign = if side = PositiveBank then 1.0 else -1.0
+        let vertices = surface |> List.collect id
+        let clearance point =
+            sign * float point.X - xSlope * (float point.Z - sourceZ)
+        let clearances = vertices |> List.map clearance
+        let contactVertices =
+            vertices
+            |> List.filter (fun point -> abs (clearance point) <= GeometryQa.tolerance)
+
+        require
+            (clearances |> List.forall (fun value -> value >= -GeometryQa.tolerance))
+            $"{side} MLC enters the 402 mm field-light pyramid."
+        require (not contactVertices.IsEmpty) $"{side} MLC does not touch the 402 mm field-light pyramid."
+
+        let projectedY =
+            contactVertices
+            |> List.map (fun point -> float point.Y * -sourceZ / (float point.Z - sourceZ))
+
+        require
+            (List.min projectedY <= -halfY + GeometryQa.tolerance
+             && List.max projectedY >= halfY - GeometryQa.tolerance)
+            $"{side} MLC tangent does not span the 402 mm pyramid face."
 
 /// Shares the geometry groups between the Node runner and browser.
 let groups = [
