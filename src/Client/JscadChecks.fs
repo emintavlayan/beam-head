@@ -341,7 +341,7 @@ let private roundedTipTangent () =
     for side, surface in bankSurfaces do
         let sign = if side = PositiveBank then 1.0 else -1.0
         let vertices = surface |> List.collect id
-        let clearance point =
+        let clearance (point: IsocentreFramePoint) =
             sign * float point.X - xSlope * (float point.Z - sourceZ)
         let clearances = vertices |> List.map clearance
         let contactVertices =
