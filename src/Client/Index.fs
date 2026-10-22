@@ -2,35 +2,246 @@ module Index
 
 open BeamHead.Domain
 open Feliz
+open Elmish
 
-/// Represents the static TrueBeam workbench state.
+/// Represents the geometry workbench and its versioned verification dialog.
 type Model = {
     ViewerMode: GeometryViewer.ViewerMode
     ShowDebugGeometry: bool
+    ShowTests: bool
+    FieldControls: FieldControls.Model
+    Tests: TestSession.Model
+    Workflow: TestCatalog.Workflow option
+    TestError: string option
+    PendingExport: int option
 }
 
-/// Represents messages handled by the static TrueBeam workbench.
+/// Represents edits, dialog actions and actual asynchronous test results.
 type Msg =
     | SetViewerMode of GeometryViewer.ViewerMode
     | SetDebugGeometry of bool
+    | SetTestsVisible of bool
+    | EditFieldSize of JawAxis * string
+    | CommitFieldSize of JawAxis
+    | SetSliderSize of JawAxis * string
+    | SelectPreset of JawAxis * float<mm>
+    | SetSquareField of bool
+    | RunTests
+    | StopTests
+    | RequestExport
+    | TestStepFinished of int * int * string * Result<TestSession.Evidence, string>
+    | AutomaticExportReady of int
+    | AutomaticExportFinished of int * Result<unit, string>
 
-/// Creates the initial BeamHead client model.
-let init () = {
-    ViewerMode = GeometryViewer.ThreeD
-    ShowDebugGeometry = false
-}
+/// Creates the workbench without assuming any validation result.
+let init () =
+    {
+        ViewerMode = GeometryViewer.ThreeD
+        ShowDebugGeometry = false
+        ShowTests = false
+        FieldControls = FieldControls.init ()
+        Tests = TestSession.init TestCatalog.definitions
+        Workflow = None
+        TestError = None
+        PendingExport = None
+    },
+    Cmd.none
 
-/// Applies a client message to the current model.
+/// Schedules one actual step after yielding so the browser can paint progress and process interaction.
+let private nextTestStep model =
+    match model.Workflow with
+    | Some workflow when
+        model.Tests.Phase = TestSession.Running
+        && model.Tests.NextStep < workflow.Steps.Length
+        ->
+        let position, runId = model.Tests.NextStep, model.Tests.RunId
+        let step = workflow.Steps[position]
+
+        Cmd.OfAsync.perform
+            (fun () -> async {
+                do! Async.Sleep 1
+
+                return
+                    try
+                        step.Execute()
+                    with error ->
+                        Error error.Message
+            })
+            ()
+            (fun result -> TestStepFinished(runId, position, step.CheckId, result))
+    | _ -> Cmd.none
+
+/// Finds captured solids belonging to the currently selected field.
+let private currentScene model =
+    model.Workflow
+    |> Option.filter (fun workflow -> workflow.Scene.Field = model.FieldControls.Field)
+
+/// Waits briefly so a successful automatic verification remains visible before download.
+let private scheduleAutomaticExport runId =
+    Cmd.OfAsync.perform
+        (fun () -> async {
+            do! Async.Sleep 2000
+            return runId
+        })
+        ()
+        AutomaticExportReady
+
+/// Downloads the exact solids captured and measured by the successful run.
+let private downloadCapturedScene runId field (workflow: TestCatalog.Workflow) =
+    Cmd.OfAsync.perform
+        (fun () -> async {
+            return
+                try
+                    JscadGeometry.downloadStl
+                        (FieldControls.exportFileName field)
+                        (Array.append workflow.Scene.Jaws workflow.Scene.Banks)
+                    Ok ()
+                with error ->
+                    Error error.Message
+        })
+        ()
+        (fun result -> AutomaticExportFinished(runId, result))
+
+/// Starts a fresh verification run for manual review or automatic export.
+let private startTests automaticExport model =
+    let starting =
+        TestSession.start model.FieldControls.Field TestCatalog.definitions model.Tests
+
+    try
+        let workflow = TestCatalog.prepare model.FieldControls.Field
+        let updated = {
+            model with
+                ShowTests = true
+                Tests = starting
+                Workflow = Some workflow
+                TestError = None
+                PendingExport = if automaticExport then Some starting.RunId else None
+        }
+        updated, nextTestStep updated
+    with error ->
+        {
+            model with
+                ShowTests = true
+                Tests = TestSession.cancel starting
+                Workflow = None
+                TestError = Some error.Message
+                PendingExport = None
+        },
+        Cmd.none
+
+/// Revokes evidence only when the accepted physical field actually changes.
+let private changeField (change: FieldControls.Model -> FieldControls.Model) (model: Model) =
+    let controls = change model.FieldControls
+
+    if controls.Field = model.FieldControls.Field then
+        { model with FieldControls = controls }
+    else
+        {
+            model with
+                FieldControls = controls
+                Tests = TestSession.invalidate model.Tests
+                Workflow = None
+                TestError = None
+                PendingExport = None
+        }
+
+/// Applies edits and accepts results only from the expected active test run.
 let update msg model =
     match msg with
-    | SetViewerMode viewerMode -> { model with ViewerMode = viewerMode }
-    | SetDebugGeometry showDebugGeometry -> {
-        model with
-            ShowDebugGeometry = showDebugGeometry
-      }
+    | SetViewerMode mode -> { model with ViewerMode = mode }, Cmd.none
+    | SetDebugGeometry enabled ->
+        {
+            model with
+                ShowDebugGeometry = enabled
+        },
+        Cmd.none
+    | SetTestsVisible visible -> { model with ShowTests = visible }, Cmd.none
+    | EditFieldSize(axis, text) -> changeField (FieldControls.editSize axis text) model, Cmd.none
+    | CommitFieldSize axis -> changeField (FieldControls.commitSize axis) model, Cmd.none
+    | SetSliderSize(axis, text) -> changeField (FieldControls.setSliderSize axis text) model, Cmd.none
+    | SelectPreset(axis, size) -> changeField (FieldControls.selectPreset axis size) model, Cmd.none
+    | SetSquareField enabled -> changeField (FieldControls.setSquareField enabled) model, Cmd.none
+    | StopTests ->
+        {
+            model with
+                Tests = TestSession.cancel model.Tests
+                PendingExport = None
+        },
+        Cmd.none
+    | RunTests when
+        model.Tests.Phase <> TestSession.Running
+        && FieldControls.canExport model.FieldControls
+        ->
+        startTests false model
+    | RunTests -> model, Cmd.none
+    | RequestExport when FieldControls.canExport model.FieldControls ->
+        match model.Tests.Phase, currentScene model with
+        | TestSession.Running, Some _ ->
+            {
+                model with
+                    ShowTests = true
+                    PendingExport = Some model.Tests.RunId
+            },
+            Cmd.none
+        | _, Some workflow when TestSession.canExport model.FieldControls.Field model.Tests ->
+            let updated = {
+                model with
+                    ShowTests = true
+                    PendingExport = Some model.Tests.RunId
+            }
+            updated, scheduleAutomaticExport model.Tests.RunId
+        | _ -> startTests true model
+    | RequestExport -> model, Cmd.none
+    | TestStepFinished(runId, position, checkId, outcome) ->
+        if
+            model.Tests.Phase <> TestSession.Running
+            || model.Tests.RunId <> runId
+            || model.Tests.NextStep <> position
+        then
+            model, Cmd.none
+        else
+            let updated = {
+                model with
+                    Tests = TestSession.completeStep runId position checkId outcome model.Tests
+            }
 
-let private trueBeamJawsForExport =
-    TrueBeam.jaws
+            if updated.Tests.Phase = TestSession.Completed then
+                match updated.PendingExport with
+                | Some pendingRun when
+                    pendingRun = runId
+                    && TestSession.canExport updated.FieldControls.Field updated.Tests
+                    && (currentScene updated |> Option.isSome)
+                    ->
+                    updated, scheduleAutomaticExport runId
+                | Some _ -> { updated with PendingExport = None }, Cmd.none
+                | None -> updated, Cmd.none
+            else
+                updated, nextTestStep updated
+    | AutomaticExportReady runId when model.PendingExport = Some runId ->
+        match currentScene model with
+        | Some workflow when TestSession.canExport model.FieldControls.Field model.Tests ->
+            model, downloadCapturedScene runId model.FieldControls.Field workflow
+        | _ -> { model with PendingExport = None }, Cmd.none
+    | AutomaticExportReady _ -> model, Cmd.none
+    | AutomaticExportFinished(runId, Ok ()) when model.PendingExport = Some runId ->
+        {
+            model with
+                ShowTests = false
+                PendingExport = None
+        },
+        Cmd.none
+    | AutomaticExportFinished(runId, Error error) when model.PendingExport = Some runId ->
+        {
+            model with
+                TestError = Some error
+                PendingExport = None
+        },
+        Cmd.none
+    | AutomaticExportFinished _ -> model, Cmd.none
+
+/// Creates export solids from the selected jaw field.
+let private trueBeamJawsForExport field =
+    TrueBeam.jaws field
     |> List.map IsocentreFrame.fromSourceJawPlacement
     |> JscadGeometry.createJaws
 
@@ -39,20 +250,15 @@ let private trueBeamMlcBanksForExport =
     |> List.map IsocentreFrame.fromSourceMlcBankPlacement
     |> JscadGeometry.createMlcBanks
 
-let private trueBeamGeometryForExport =
-    Array.append trueBeamJawsForExport trueBeamMlcBanksForExport
-
-let private trueBeamJawsForViewer =
-    JscadGeometry.createViewerDisplay trueBeamJawsForExport
-
 let private trueBeamMlcBanksForViewer =
     JscadGeometry.createViewerDisplay trueBeamMlcBanksForExport
 
 let private viewerDisplaySource =
     IsocentreFrame.source |> ViewerDisplay.fromIsocentrePoint
 
-let private viewerDisplayJawReferences axis =
-    TrueBeam.jaws
+/// Reads jaw reference points from the selected field.
+let private viewerDisplayJawReferences field axis =
+    TrueBeam.jaws field
     |> List.filter (fun jaw -> jaw.Axis = axis)
     |> List.map (
         IsocentreFrame.fromSourceJawPlacement
@@ -70,50 +276,123 @@ let private viewerDisplayMlcReferences =
     )
     |> List.toArray
 
-let private nominalFieldGuideHalfWidth = TrueBeamJaws.fieldSizeAtIsocentre / 2.0
+/// Creates the rectangular field guide from the selected isocentre dimensions.
+let private nominalFieldCorners field =
+    FieldLight.corners field |> Array.map ViewerDisplay.fromIsocentrePoint
 
-let private nominalFieldCorners =
-    let corner x y : IsocentreFramePoint = {
-        X = x
-        Y = y
-        Z = IsocentreFrame.isocentre.Z
-    }
-
-    [|
-        corner -nominalFieldGuideHalfWidth -nominalFieldGuideHalfWidth
-        corner nominalFieldGuideHalfWidth -nominalFieldGuideHalfWidth
-        corner nominalFieldGuideHalfWidth nominalFieldGuideHalfWidth
-        corner -nominalFieldGuideHalfWidth nominalFieldGuideHalfWidth
-    |]
-    |> Array.map ViewerDisplay.fromIsocentrePoint
-
-let private viewerDebugGeometry: GeometryViewer.DebugGeometry = {
+/// Creates the field-dependent diagnostic geometry for the viewer.
+let private viewerDebugGeometry field : GeometryViewer.DebugGeometry = {
     Isocentre = IsocentreFrame.isocentre |> ViewerDisplay.fromIsocentrePoint
-    XJawReferences = viewerDisplayJawReferences X
-    YJawReferences = viewerDisplayJawReferences Y
+    XJawReferences = viewerDisplayJawReferences field X
+    YJawReferences = viewerDisplayJawReferences field Y
     MlcReferences = viewerDisplayMlcReferences
-    NominalFieldCorners = nominalFieldCorners
+    NominalFieldCorners = nominalFieldCorners field
 }
 
-let private staticFieldSize (label: string) =
-    Html.label [
-        prop.className "form-control w-full"
+/// Names a jaw axis for accessible field controls.
+let private axisName axis =
+    match axis with
+    | X -> "X"
+    | Y -> "Y"
+
+/// Renders synchronized slider, numeric input and presets for one jaw axis.
+let private fieldSizeControl axis (model: FieldControls.Model) dispatch =
+    let name = axisName axis
+    let disabled = axis = Y && model.SquareField
+    let size = JawField.size axis model.Field
+
+    let text, error =
+        match axis with
+        | X -> model.XInput, model.XError
+        | Y -> model.YInput, model.YError
+
+    let inputId = $"field-{name.ToLowerInvariant()}-size"
+
+    Html.fieldSet [
+        prop.disabled disabled
+        prop.className (if disabled then "space-y-2 opacity-50" else "space-y-2")
         prop.children [
             Html.div [
-                prop.className "label"
-                prop.children [ Html.span [ prop.className "label-text font-medium"; prop.text label ] ]
-            ]
-            Html.div [
-                prop.className "input input-bordered flex items-center gap-2 bg-base-200"
+                prop.className "flex items-center justify-between gap-3"
                 prop.children [
-                    Html.span [ prop.className "grow"; prop.text "400" ]
-                    Html.span [ prop.className "text-sm text-base-content/60"; prop.text "mm" ]
+                    Html.label [
+                        prop.htmlFor inputId
+                        prop.className "font-medium"
+                        prop.text $"{name} field size"
+                    ]
+                    Html.div [
+                        prop.className "flex items-center gap-2"
+                        prop.children [
+                            Html.input [
+                                prop.id inputId
+                                prop.type' "text"
+                                prop.custom ("inputMode", "decimal")
+                                prop.className "input input-bordered input-sm w-24 text-right"
+                                prop.value text
+                                prop.ariaLabel $"{name} field size in centimetres"
+                                prop.onChange (fun (value: string) -> dispatch (EditFieldSize(axis, value)))
+                                prop.onBlur (fun _ -> dispatch (CommitFieldSize axis))
+                            ]
+                            Html.span [ prop.className "text-sm"; prop.text "cm" ]
+                        ]
+                    ]
                 ]
             ]
+            Html.input [
+                prop.type' "range"
+                prop.className "range range-primary range-sm w-full"
+                prop.min 0.5
+                prop.max 40.0
+                prop.step 0.1
+                prop.value (float size / 10.0)
+                prop.ariaLabel $"{name} field size slider"
+                prop.onChange (fun (value: string) -> dispatch (SetSliderSize(axis, value)))
+            ]
+            Html.div [
+                prop.className "flex flex-wrap gap-1"
+                prop.children [
+                    for preset in FieldControls.presets do
+                        Html.button [
+                            prop.type' "button"
+                            prop.className (
+                                if size = preset then
+                                    "btn btn-xs btn-primary"
+                                else
+                                    "btn btn-xs btn-outline"
+                            )
+                            prop.ariaLabel $"{name} preset {int (float preset / 10.0)} cm"
+                            prop.onClick (fun _ -> dispatch (SelectPreset(axis, preset)))
+                            prop.text $"{int (float preset / 10.0)}"
+                        ]
+                    Html.span [
+                        prop.className "self-center px-1 text-xs text-base-content/60"
+                        prop.text "cm"
+                    ]
+                ]
+            ]
+            match error with
+            | Some message -> Html.p [ prop.role "alert"; prop.className "text-sm text-error"; prop.text message ]
+            | None -> Html.none
         ]
     ]
 
-let private controlsCard =
+/// Renders the checkbox that links the Y dimension to X.
+let private squareFieldToggle enabled dispatch =
+    Html.label [
+        prop.className "flex cursor-pointer items-center gap-2"
+        prop.children [
+            Html.input [
+                prop.type' "checkbox"
+                prop.className "checkbox checkbox-primary checkbox-sm"
+                prop.isChecked enabled
+                prop.onChange (fun value -> dispatch (SetSquareField value))
+            ]
+            Html.span [ prop.className "font-medium"; prop.text "Square field" ]
+        ]
+    ]
+
+/// Renders field editing controls and exports the selected physical geometry.
+let private controlsCard (model: FieldControls.Model) pendingExport dispatch =
     Html.aside [
         prop.className "card border border-base-300 bg-base-100 shadow-md"
         prop.children [
@@ -138,16 +417,21 @@ let private controlsCard =
                         ]
                     ]
 
-                    Html.div [ prop.className "divider my-0"; prop.text "Static jaws" ]
+                    Html.div [ prop.className "divider my-0"; prop.text "Jaws" ]
 
                     Html.div [
-                        prop.className "space-y-2"
-                        prop.children [ staticFieldSize "X field size"; staticFieldSize "Y field size" ]
+                        prop.className "space-y-5"
+                        prop.children [
+                            squareFieldToggle model.SquareField dispatch
+                            fieldSizeControl X model dispatch
+                            fieldSizeControl Y model dispatch
+                        ]
                     ]
 
                     Html.p [
                         prop.className "text-sm text-base-content/70"
-                        prop.text "Fixed 400 x 400 mm field at isocentre"
+                        prop.text
+                            $"{FieldControls.formatCentimetres (JawField.xSize model.Field)} x {FieldControls.formatCentimetres (JawField.ySize model.Field)} cm at isocentre"
                     ]
 
                     Html.div [ prop.className "divider my-0"; prop.text "Static MLC" ]
@@ -158,28 +442,65 @@ let private controlsCard =
                             Html.div [
                                 prop.className "flex items-center justify-between gap-3"
                                 prop.children [
-                                    Html.span [ prop.className "font-medium"; prop.text "Millennium 120" ]
-                                    Html.span [ prop.className "badge badge-neutral"; prop.text "Retracted" ]
+                                    Html.span [
+                                        prop.className "font-medium whitespace-nowrap"
+                                        prop.text "Millennium 120"
+                                    ]
+                                    Html.span [
+                                        prop.className "badge badge-neutral shrink-0 whitespace-nowrap"
+                                        prop.text "Delivery"
+                                    ]
                                 ]
                             ]
                             Html.p [
                                 prop.className "mt-1 text-sm text-base-content/60"
-                                prop.text "Simplified two-bank geometry"
+                                prop.text $"Machine setting: +/-{float TrueBeamMlc.deliveryTipSettingAtIsocentre} mm at isocentre"
                             ]
                         ]
                     ]
 
                     Html.button [
                         prop.className "btn btn-primary mt-1 w-full"
-                        prop.onClick (fun _ ->
-                            JscadGeometry.downloadStl "truebeam-400x400mm-retracted-mlc.stl" trueBeamGeometryForExport)
-                        prop.text "Export beam head STL"
+                        prop.disabled (not (FieldControls.canExport model) || (pendingExport |> Option.isSome))
+                        prop.onClick (fun _ -> dispatch RequestExport)
+                        prop.text (if pendingExport |> Option.isSome then "Verifying geometry…" else "Export beam head STL")
                     ]
                 ]
             ]
         ]
     ]
 
+/// Renders the single navigation entry for opening tests and reading their current result.
+let private testsNavigationButton (field: JawField) (tests: TestSession.Model) dispatch =
+    let failed =
+        tests.Checks
+        |> List.filter (fun row -> not row.Failures.IsEmpty)
+        |> List.length
+
+    let statusClass, statusText =
+        match tests.Phase with
+        | TestSession.Completed when TestSession.canExport field tests ->
+            "badge-success", $"{tests.Checks.Length} / {tests.Checks.Length} passed"
+        | TestSession.Completed -> "badge-error", $"{failed} failed"
+        | TestSession.Running -> "badge-info", $"{tests.NextStep} / {tests.TotalSteps}"
+        | TestSession.Outdated -> "badge-warning", "Outdated"
+        | TestSession.Cancelled -> "badge-neutral", "Stopped"
+        | TestSession.NotRun -> "badge-ghost", "Not run"
+
+    Html.button [
+        prop.id "tests-trigger"
+        prop.className "btn btn-outline btn-sm gap-2"
+        prop.onClick (fun _ -> dispatch (SetTestsVisible true))
+        prop.children [
+            Html.span "Tests"
+            Html.span [
+                prop.className $"badge badge-sm {statusClass}"
+                prop.text statusText
+            ]
+        ]
+    ]
+
+/// Renders a button selecting the geometry camera.
 let private viewerModeButton
     (selectedMode: GeometryViewer.ViewerMode)
     (mode: GeometryViewer.ViewerMode)
@@ -198,6 +519,7 @@ let private viewerModeButton
         prop.text label
     ]
 
+/// Renders the diagnostic geometry visibility switch.
 let private debugGeometryToggle showDebugGeometry dispatch =
     Html.label [
         prop.className "flex cursor-pointer items-center gap-2 whitespace-nowrap"
@@ -212,7 +534,8 @@ let private debugGeometryToggle showDebugGeometry dispatch =
         ]
     ]
 
-let private viewerCard selectedMode showDebugGeometry dispatch =
+/// Renders the camera controls and selected field geometry.
+let private viewerCard field jawGeometry selectedMode showDebugGeometry dispatch =
     Html.section [
         prop.className "card overflow-hidden border border-base-300 bg-base-100 shadow-md"
         prop.children [
@@ -226,7 +549,7 @@ let private viewerCard selectedMode showDebugGeometry dispatch =
                                 Html.h2 [ prop.className "text-lg font-semibold"; prop.text "3D preview" ]
                                 Html.p [
                                     prop.className "text-sm text-base-content/60"
-                                    prop.text "TrueBeam jaws and retracted Millennium 120 MLC"
+                                    prop.text "TrueBeam jaws and Millennium 120 MLC at the TSEBT delivery position"
                                 ]
                             ]
                             Html.div [
@@ -253,8 +576,9 @@ let private viewerCard selectedMode showDebugGeometry dispatch =
                         selectedMode,
                         showDebugGeometry,
                         viewerDisplaySource,
-                        viewerDebugGeometry,
-                        trueBeamJawsForViewer,
+                        viewerDebugGeometry field,
+                        jawGeometry,
+                        field,
                         trueBeamMlcBanksForViewer
                     )
                 ]
@@ -264,6 +588,10 @@ let private viewerCard selectedMode showDebugGeometry dispatch =
 
 /// Renders the current BeamHead client.
 let view model dispatch =
+    let field = model.FieldControls.Field
+    let jawGeometry = trueBeamJawsForExport field
+    let viewerJawGeometry = JscadGeometry.createViewerDisplay jawGeometry
+
     Html.main [
         prop.className "min-h-screen w-full bg-base-200 text-base-content"
         prop.children [
@@ -279,14 +607,34 @@ let view model dispatch =
                                     Html.h1 [ prop.className "text-xl font-bold tracking-tight"; prop.text "BeamHead" ]
                                 ]
                             ]
+                            Html.div [
+                                prop.className "navbar-end"
+                                prop.children [
+                                    testsNavigationButton field model.Tests dispatch
+                                ]
+                            ]
                         ]
                     ]
 
                     Html.div [
                         prop.className "mt-4 grid items-start gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]"
-                        prop.children [ controlsCard; viewerCard model.ViewerMode model.ShowDebugGeometry dispatch ]
+                        prop.children [
+                            controlsCard model.FieldControls model.PendingExport dispatch
+                            viewerCard field viewerJawGeometry model.ViewerMode model.ShowDebugGeometry dispatch
+                        ]
                     ]
                 ]
             ]
+            TestDialog.View(
+                model.ShowTests,
+                field,
+                FieldControls.canExport model.FieldControls,
+                model.Tests,
+                model.TestError,
+                (model.PendingExport |> Option.isSome),
+                (fun () -> dispatch RunTests),
+                (fun () -> dispatch StopTests),
+                (fun () -> dispatch (SetTestsVisible false))
+            )
         ]
     ]

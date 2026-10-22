@@ -136,6 +136,8 @@ NUGET
       FSharp.Core (>= 6.0)
       Microsoft.IO.RecyclableMemoryStream (>= 3.0)
     FSharp.Core (8.0.403)
+    FsToolkit.ErrorHandling (4.18)
+      FSharp.Core (>= 7.0.300)
     Giraffe (6.4)
       FSharp.Core (>= 6.0)
       Giraffe.ViewEngine (>= 1.4)
