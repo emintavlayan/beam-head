@@ -35,14 +35,15 @@ The codebase follows a lightweight domain-driven design approach in F#, with a s
 - Clearing Square field enables independent rectangular-field editing.
 - Invalid numeric input keeps the last valid preview and disables STL export until corrected.
 - The preview, debug field guide and STL export use the same selected dimensions.
-- Millennium 120 leaf tips remain fixed at ±201 mm at isocentre.
+- The recorded Millennium 120 machine setting remains fixed at ±201 mm at isocentre.
+- The physical bank placement is profile-compensated so each rounded tip is tangent at its reported ±201 mm setting, 1 mm outside the maximum jaw field.
 - STL filenames include both jaw dimensions, for example `truebeam-360x200mm-mlc201mm.stl`.
 
 ## Geometry validation and tests
 
 Open **Tests** for a large scrollable dialog with three chapters: Domain tests, Geometry checker tests and JSCAD geometry tests. **Run all tests** executes 80 checks with real progress and read-only green/red indicators. The active check scrolls into view; passing chapters collapse to their result headers, while failed chapters and failure reasons remain open. Closing keeps a manual run running; **Stop** cancels it.
 
-**Export beam head STL** starts verification automatically, shows the successful result briefly, then downloads the exact solids that were measured. Failed verification stays open and cannot download. Field changes invalidate results. A rounded-MLC warning appears only when its silhouette enters the requested X opening.
+**Export beam head STL** starts verification automatically, shows the successful result briefly, then downloads the exact solids that were measured. Failed verification stays open and cannot download. Field changes invalidate results. Rounded-tip tangency is a required geometry check.
 
 The native Domain suite has 55 tests. The separate Geometry suite adds 15 native checker tests and a production-JSCAD suite covering all 396 supported settings per jaw axis, representative rectangular fields and deliberate geometry defects. A further 14 native client-workflow tests cover cancellation, stale results and export permission.
 

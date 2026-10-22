@@ -224,19 +224,19 @@ let private malformedGeometry () =
     let collapsed = changeJaw X Positive (fun _ -> IsocentreFrame.isocentre) jaws
     require (GeometryQa.inspect field collapsed banks |> Result.isError) "Degenerate polygon escaped QA."
 
-/// Checks physical MLC placement independently of the jaw field and detects the old tip setting.
+/// Checks physical MLC placement independently of the jaw field and detects a displaced bank.
 let private mlcMutations () =
     let field = JawField.fullSize
     let jawSolids, bankSolids = geometry field
     let jaws, banks = surfaces jawSolids bankSolids
 
-    let oldSetting =
+    let displacedSetting =
         banks
         |> List.map (fun (side, surface) ->
-            let shift = (if side = PositiveBank then 1.0 else -1.0) * 1.3234<mm>
+            let shift = (if side = PositiveBank then -1.0 else 1.0) * 1.0<mm>
             side, surface |> List.map (List.map (fun point -> { point with X = point.X + shift })))
 
-    requireFailure "Midplane tip at isocentre" field jaws oldSetting
+    requireFailure "Rounded-tip tangent at isocentre" field jaws displacedSetting
 
     let wrongSpan =
         banks
@@ -249,7 +249,7 @@ let private mlcMutations () =
         banks
         |> List.map (fun (side, surface) -> (if side = PositiveBank then NegativeBank else PositiveBank), surface)
 
-    requireFailure "Midplane tip at isocentre" field jaws reversed
+    requireFailure "Rounded-tip tangent at isocentre" field jaws reversed
 
 /// Checks overlap and material-path failures using deliberately misplaced production bank surfaces.
 let private collisionAndPathMutations () =
@@ -313,25 +313,16 @@ let private fieldLightMutations () =
              && not (GeometryQa.meetsRequirement check)))
         "Display coordinates escaped the physical guide checks."
 
-/// Checks that the rounded-tip silhouette is measured separately from its midplane setting.
-let private roundedTipShadow () =
+/// Checks that each generated rounded bank is tangent at the reported leaf setting.
+let private roundedTipTangent () =
     let jaws, banks = geometry JawField.fullSize
     let report = JscadGeometry.inspectBeamHead JawField.fullSize jaws banks |> valid
+    let tangents =
+        report.Measurements
+        |> List.filter (fun measurement -> measurement.Requirement = "Rounded-tip tangent at isocentre")
 
-    require
-        (report.MlcShadowHalfWidth > 197.0<mm> && report.MlcShadowHalfWidth < 199.0<mm>)
-        "Rounded-tip shadow was confused with the 201 mm midplane tip setting."
-
-    require (report.MlcFieldClearance < 0.0<mm>) "The 400 mm field must report its rounded-tip geometric intrusion."
-    let smaller = JawField.create 360.0<mm> 360.0<mm> |> valid
-    let smallerJaws, _ = geometry smaller
-    let smallerReport = JscadGeometry.inspectBeamHead smaller smallerJaws banks |> valid
-    require (smallerReport.MlcFieldClearance > 0.0<mm>) "The 360 mm field should clear the rounded MLC silhouette."
-
-    printfn
-        "Rounded MLC shadow half-width: %.6f mm; 400 mm field clearance: %.6f mm"
-        (float report.MlcShadowHalfWidth)
-        (float report.MlcFieldClearance)
+    require (tangents.Length = 2) "Both MLC banks must provide rounded-tip tangent evidence."
+    require (tangents |> List.forall GeometryQa.meetsRequirement) "A rounded MLC bank does not match the reported leaf setting."
 
 /// Shares the geometry groups between the Node runner and browser.
 let groups = [
@@ -343,5 +334,5 @@ let groups = [
     "MLC placement mutations", mlcMutations
     "Collision and ray-path mutations", collisionAndPathMutations
     "Field-light pyramid mutations", fieldLightMutations
-    "Rounded-tip silhouette", roundedTipShadow
+    "Rounded-tip field tangent", roundedTipTangent
 ]

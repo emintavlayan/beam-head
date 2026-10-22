@@ -11,11 +11,9 @@ type GeometryMeasurement = {
     Tolerance: float
 }
 
-/// Represents geometry measurements and the effective rounded-tip shadow at isocentre.
+/// Represents the complete set of measured beam-head geometry requirements.
 type GeometryQaReport = {
     Measurements: GeometryMeasurement list
-    MlcShadowHalfWidth: float<mm>
-    MlcFieldClearance: float<mm>
 }
 
 /// Checks resolved physical solid vertices against an independent geometric specification.
@@ -151,30 +149,27 @@ module GeometryQa =
           measurement componentName "Cuboid face count" 6.0 (float surface.Length) ]
         @ surfaceMeasurements componentName surface
 
-    /// Measures MLC physical bounds, actual midplane tips and divergent envelope vertices.
+    /// Measures MLC physical bounds, rounded-tip tangent and divergent envelope vertices.
     let private bankMeasurements (side, surface: IsocentreFramePoint list list) =
         let componentName = $"{side} MLC"
         let sign = if side = PositiveBank then 1.0 else -1.0
         let vertices = List.collect id surface
-        let atMidplane = vertices |> List.filter (fun point -> abs (float point.Z + 491.0) <= tolerance)
-        result {
-            let! tip =
-                if List.isEmpty atMidplane then Error $"{componentName}: no tip vertices at the specified MLC midplane."
-                else Ok (atMidplane |> List.minBy (fun point -> sign * float point.X))
-            let envelopeError = vertices |> List.map (fun point -> abs (abs (float point.Y) * 1000.0 / (float point.Z + 1000.0) - 205.0)) |> List.max
-            let mirrorError = vertices |> List.map (fun point ->
-                vertices |> List.map (fun other ->
-                    length [float (point.X - other.X); float point.Y * 509.0 / (float point.Z + 1000.0) - float other.Y * 509.0 / (float other.Z + 1000.0); float point.Z + float other.Z + 982.0]) |> List.min) |> List.max
-            return
-                [ measurement componentName "Midplane tip at isocentre" 201.0 (sign * float tip.X * 1000.0 / 509.0)
-                  measurement componentName "Upstream distance from source" 475.5 (vertices |> List.minBy _.Z |> fun point -> float point.Z + 1000.0)
-                  measurement componentName "Downstream distance from source" 542.5 (vertices |> List.maxBy _.Z |> fun point -> float point.Z + 1000.0)
-                  measurement componentName "Axial thickness" 67.0 (span [0.0; 0.0; 1.0] vertices)
-                  measurement componentName "Physical body depth" 76.35 (span [1.0; 0.0; 0.0] vertices)
-                  measurement componentName "Envelope projected half-span error" 0.0 envelopeError
-                  measurement componentName "Profile symmetry about midplane" 0.0 mirrorError ]
-                @ surfaceMeasurements componentName surface
-        }
+        let tangentAtIsocentre =
+            vertices
+            |> List.map (fun point -> sign * float point.X * 1000.0 / (float point.Z + 1000.0))
+            |> List.min
+        let envelopeError = vertices |> List.map (fun point -> abs (abs (float point.Y) * 1000.0 / (float point.Z + 1000.0) - 205.0)) |> List.max
+        let mirrorError = vertices |> List.map (fun point ->
+            vertices |> List.map (fun other ->
+                length [float (point.X - other.X); float point.Y * 509.0 / (float point.Z + 1000.0) - float other.Y * 509.0 / (float other.Z + 1000.0); float point.Z + float other.Z + 982.0]) |> List.min) |> List.max
+        [ measurement componentName "Rounded-tip tangent at isocentre" 201.0 tangentAtIsocentre
+          measurement componentName "Upstream distance from source" 475.5 (vertices |> List.minBy _.Z |> fun point -> float point.Z + 1000.0)
+          measurement componentName "Downstream distance from source" 542.5 (vertices |> List.maxBy _.Z |> fun point -> float point.Z + 1000.0)
+          measurement componentName "Axial thickness" 67.0 (span [0.0; 0.0; 1.0] vertices)
+          measurement componentName "Physical body depth" 76.35 (span [1.0; 0.0; 0.0] vertices)
+          measurement componentName "Envelope projected half-span error" 0.0 envelopeError
+          measurement componentName "Profile symmetry about midplane" 0.0 mirrorError ]
+        @ surfaceMeasurements componentName surface
 
     /// Creates unique unit directions for convex-solid separation calculations.
     let private uniqueDirections directions =
@@ -267,7 +262,7 @@ module GeometryQa =
             for side, surface in banks do
                 let! _ = validateSurface $"{side} MLC" surface
                 ()
-            let! bankResults = banks |> List.map bankMeasurements |> List.sequenceResultM
+            let bankResults = banks |> List.collect bankMeasurements
             let components = (jaws |> List.map (fun (axis, side, surface) -> $"{axis} {side} jaw", surface)) @ (banks |> List.map (fun (side, surface) -> $"{side} MLC", surface))
             let overlaps = components |> List.indexed |> List.collect (fun (index, solid) -> components |> List.skip (index + 1) |> List.map (pairMeasurement solid))
             let! centralPaths = components |> List.map (fun (name, surface) -> rayPathLength IsocentreFrame.isocentre surface |> Result.map (float >> measurement name "Central axis material path" 0.0)) |> List.sequenceResultM
@@ -275,12 +270,7 @@ module GeometryQa =
             let positiveVertices = banks |> List.find (fun (side, _) -> side = PositiveBank) |> snd |> List.collect id |> List.map coordinates
             let mirrorError = positiveVertices |> List.map (fun point -> negativeVertices |> List.map (fun other -> length [point[0] + other[0]; point[1] - other[1]; point[2] - other[2]]) |> List.min) |> List.max
             let symmetry = measurement "MLC banks" "Opposing bank reflection error" 0.0 mirrorError
-            let shadow = banks |> List.map (fun (side, surface) ->
-                let sign = if side = PositiveBank then 1.0 else -1.0
-                surface |> List.collect id |> List.map (fun point -> sign * float point.X * 1000.0 / (float point.Z + 1000.0)) |> List.min) |> List.min
             return {
-                Measurements = jawResults @ List.concat bankResults @ overlaps @ centralPaths @ [symmetry]
-                MlcShadowHalfWidth = shadow * 1.0<mm>
-                MlcFieldClearance = shadow * 1.0<mm> - JawField.xSize field / 2.0
+                Measurements = jawResults @ bankResults @ overlaps @ centralPaths @ [symmetry]
             }
         }

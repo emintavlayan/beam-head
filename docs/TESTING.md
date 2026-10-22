@@ -7,7 +7,7 @@ The original Domain suite contains 55 xUnit tests:
 | Area | Tests | What the evidence establishes |
 | --- | ---: | --- |
 | Jaws and coordinate frames | 23 | Reference coordinates, frame transforms, placement symmetry, nominal dimensions and selected divergence calculations |
-| MLC | 19 | Declared parameters, profile data, midplane tip projection, envelope scaling and placement transforms |
+| MLC | 19 | Declared parameters, profile data, machine setting, tangent-compensated placement, envelope scaling and transforms |
 | Field domain | 5 | Accepted dimensions, invalid input, normalization, representative projected edges and axis independence |
 | Field controls | 8 | Linking, independent edits, validation state, presets, formatting and filenames |
 
@@ -32,13 +32,13 @@ The expected measurements are specified independently in `GeometryQa`; they do n
 | Jaw body | Extents measured along independent field-plane normal, tangent and cross-axis directions: 110 mm body depth, 78 mm thickness, axis-specific cross width |
 | Jaw reference | Aperture-face centroid lies at the 406 mm X reference plane or 319 mm Y trajectory radius; cross-axis centre is zero |
 | Field-light pyramid | Actual debug-pyramid constructor, specified source and corner vertices, face count, planarity, closure and outward convex half-spaces |
-| MLC placement | Actual midplane tip vertices project to +/-201 mm; axial limits are 475.5 and 542.5 mm from source |
+| MLC placement | Each actual rounded profile is tangent to its reported +/-201 mm setting at isocentre; axial limits are 475.5 and 542.5 mm from source |
 | MLC body | Axial thickness, body depth, projected Y envelope and profile symmetry after correcting for Y divergence |
 | Opposing banks | Resolved bank vertices agree under reflection in X |
 | Surface structure | Face planarity and convex polygon winding, exactly one oppositely directed edge mate, and every vertex inside every outward face half-space |
 | Component separation | Separating-axis test using face normals and edge-cross-edge axes for each pair of convex components |
 | Central axis | Source-ray material path through each component is zero |
-| Rounded-tip shadow | Minimum X projection of actual bank vertices, reported separately from the midplane tip setting |
+| Rounded-tip tangent | Minimum signed X projection of each actual bank is 201 mm at isocentre, 1 mm outside the maximum jaw field |
 
 The checker assumes the supported convex jaw and bank envelopes. Convexity and outward half-spaces are checked; this is not a general-purpose validator for arbitrary concave CAD.
 
@@ -46,13 +46,13 @@ The numerical tolerance is **0.000001 mm** for double-precision, pre-export geom
 
 ## Detection tests
 
-The suite deliberately introduces jaw translations, incorrect tilt, swapped axes, scale errors, display-frame mirroring, missing faces, reversed winding, missing/duplicate components, nonfinite coordinates, source-plane vertices, collapsed faces, the previous MLC setting, incorrect envelope span, swapped banks, overlapping banks, central-axis obstruction and altered field-light geometry. It requires the relevant check to fail.
+The suite deliberately introduces jaw translations, incorrect tilt, swapped axes, scale errors, display-frame mirroring, missing faces, reversed winding, missing/duplicate components, nonfinite coordinates, source-plane vertices, collapsed faces, displaced MLC banks, incorrect envelope span, swapped banks, overlapping banks, central-axis obstruction and altered field-light geometry. It requires the relevant check to fail.
 
-## Current rounded-tip observation
+## Rounded-tip tangent placement
 
-The supplied profile's midplane setting is +/-201 mm at isocentre. Its point-source geometric silhouette is approximately +/-197.953874 mm. At a 400 mm X jaw field this gives -2.046126 mm clearance per symmetric side. A 360 mm X field clears the silhouette.
+The reported delivery setting remains +/-201 mm at isocentre. Field-light observation shows that the retracted MLC does not shade the 400 mm jaw field. The machine setting represents the source-ray tangent to the rounded surface, not the physical profile reference at the MLC midplane.
 
-The app displays this as a separate geometric warning. It does not change the requested field or the supplied MLC profile, and it does not interpret this silhouette as a measured dose field edge.
+The CAD placement is therefore derived from the reconstructed profile. For every profile point, the model calculates the physical translation required to keep that point outside the 201 mm setting ray and selects the largest requirement. This places the physical midplane reference at 103.90517 mm in the MLC plane, projecting to 204.135894 mm at isocentre. The resulting rounded profile is tangent at 201 mm and clears the 200 mm jaw edge by 1 mm.
 
 ## Running checks
 
@@ -89,14 +89,14 @@ The export button remains available whenever the field input is valid. It opens 
 
 Results belong to the captured physical field. Changing its accepted dimensions marks results outdated and rejects pending callbacks. Invalid numeric drafts block running and export; restoring the same physical field keeps its evidence. Export requires a complete, passing run and passing measured geometry for the exact field. It serializes the captured solids that were measured. A partial, stopped, failed or outdated run cannot authorize export.
 
-The rounded-tip field-clearance warning is displayed only when the silhouette enters the requested X opening; it does not disable export. A construction pass is evidence for the listed geometry requirements, not a claim of physical-machine or dose agreement.
+Rounded-tip tangency is included in construction pass/fail. There is no separate intrusion report. A construction pass is evidence for the listed geometry requirements, not a claim of dose agreement.
 
 `tests/Client/Client.Tests.fsproj` adds 14 native xUnit tests for snapshot capture, run identity, callback order, invalidation, cancellation, persistent failures, measured evidence and export permission. These verify the workflow rather than adding another end-user chapter.
 
 ## Remaining coverage gaps
 
 - STL serialization, float32 quantization and re-import are outside these pre-export checks.
-- The reconstructed tip profile is checked for its geometric properties and placement, but its complete shape has not been validated against vendor data or machine measurements. The declared radius and angle alone do not certify that shape.
+- Field-light observation establishes the no-shading boundary condition. The exact physical reference correction is inferred from the reconstructed tip profile; the profile's complete shape has not been validated against vendor data or direct mechanical measurement.
 - The tests establish listed requirements within explicit floating-point tolerances; they are not a theorem-prover verification of all possible CAD properties.
 - Beam transport, material assignment, transmission, scatter, dose and agreement with the physical machine require separate evidence.
 - Browser controls and download behaviour have been exercised with a browser harness during development; that harness is not yet a committed automated UI suite.

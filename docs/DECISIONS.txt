@@ -332,6 +332,7 @@ Evidence used for today's jaw decisions
   - Use a 1000 x 1000 mm grid with 50 mm and 5 mm ticks so the visual density stays similar to normal JSCAD.
 
 11:12 - Defined the Millennium 120 delivery position
+  - Superseded on 2026-10-22: the reported setting is a rounded-surface tangent coordinate, not a physical midplane coordinate.
   - The MLC reference is Z = -49.1 cm in isocentre coordinates.
   - With the source at Z = -100 cm this gives a source-to-MLC reference distance of 50.9 cm.
   - The delivered leaf-tip setting supplied by the user is +/-20.10 cm at isocentre.
@@ -363,6 +364,7 @@ Evidence used for today's jaw decisions
   - No geometry, coordinate or STL behaviour changed.
 
 11:28 - Fixed the first simplified Millennium 120 MLC model
+  - Superseded on 2026-10-22: direct projection of 201 mm to 102.309 mm did not account for the rounded-tip tangent convention.
   - The TSEBT delivery position places all leaf tips at +/-201 mm at isocentre, so we model two continuous tungsten bank envelopes instead of 120 individual leaves.
   - Existing TOPAS geometry places the MLC at Z = -491 mm from isocentre, equal to 509 mm from source.
   - Bank tip positions are +/-102.309 mm at the MLC plane, derived from the delivered +/-201 mm setting at isocentre.
@@ -380,6 +382,7 @@ Evidence used for today's jaw decisions
     - TSEBT delivery setting supplied by the user - leaf tips at +/-20.10 cm at isocentre; MLC Z = -49.1 cm in the isocentre frame.
 
 13:18 - Removed hardcoded derived MLC geometry values
+  - Superseded on 2026-10-22 for the physical X reference; the current reference is derived from the full rounded profile and the 201 mm tangent ray.
   - The MLC delivery setting is defined at isocentre as +/-201 mm.
   - The physical tip position at the 509 mm MLC plane is derived by source projection and equals +/-102.309 mm.
   - The Millennium bank span is defined as 400 mm projected at isocentre.
@@ -471,8 +474,8 @@ Evidence used for today's jaw decisions
 
 Geometry baseline
   - Jaw aperture rays run from the source centre to the selected field edge at isocentre.
-  - MLC leaf-tip delivery positions are +/-201 mm at isocentre, supplied from the user's machine observation.
-  - At the 509 mm source-to-MLC midplane these positions are +/-102.309 mm.
+  - The reported MLC delivery setting is +/-201 mm at isocentre, supplied from the user's machine observation.
+  - The physical bank translation is derived separately from the rounded-tip tangent condition.
   - The 400 mm field STL export is named truebeam-400x400mm-mlc201mm.stl.
 
 Field-size controls
@@ -483,7 +486,7 @@ Field-size controls
   - Rechecking Square field copies the current valid X dimension to Y.
   - Invalid input retains the last valid geometry and disables export.
   - Jaw placements, the debug field outline and STL filename derive from the same validated JawField value.
-  - The MLC delivery setting remains fixed at +/-201 mm at isocentre for every jaw field.
+  - The reported MLC delivery setting remains fixed at +/-201 mm at isocentre for every jaw field.
 
 Pre-export geometry validation
   - Keep the 55 existing Domain tests as regression checks of parameters, placements and control behaviour.
@@ -494,9 +497,8 @@ Pre-export geometry validation
   - Sweep all 396 supported settings on each jaw axis; use representative rectangular fields for full component checks.
   - Use a 0.000001 mm numerical construction tolerance; this is not a clinical acceptance threshold.
   - Display measured/expected requirements in the app and prevent export when a declared construction requirement fails.
-  - Report the rounded-tip silhouette separately from the nominal +/-201 mm midplane setting.
-  - The current supplied MLC profile casts a point-source silhouette at approximately +/-197.953874 mm at isocentre, entering a 400 mm X jaw field by 2.046126 mm per symmetric side.
-  - This silhouette is a model observation, not a measured radiation-field edge; the MLC profile is retained for separate validation.
+  - Require each generated rounded MLC profile to be tangent to the reported +/-201 mm leaf setting.
+  - Keep the reported +/-201 mm machine setting separate from the derived physical bank reference.
   - STL serialization, vendor/profile agreement, material assignment and dose remain separate validation tasks.
 
 User-operated test dialog
@@ -507,5 +509,20 @@ User-operated test dialog
   - Closing or Escape keeps a run active; Stop cancels it. Native dialog handles focus and background inertness.
   - Bind evidence to the exact captured field and solids. Field changes revoke validity; stale or reordered callbacks receive no credit.
   - Require all checks and measured geometry to pass before exporting the captured solids.
-  - Keep the rounded-shadow observation separate from construction pass/fail.
+  - Include rounded-tip tangency in construction pass/fail.
   - Add 14 native xUnit workflow tests for progress, cancellation, invalidation, evidence and export gating.
+
+2026-10-22
+
+Corrected rounded-tip placement from field-light observation
+  - Field-light observation shows that the retracted MLC does not shade the 400 x 400 mm jaw field.
+  - The rounded MLC surface defines the reported radiation-field edge by tangent projection rather than by its physical midplane reference.
+  - The +/-201 mm value is retained as the reported machine leaf-position setting and interpreted as the rounded-surface tangent coordinate at isocentre.
+  - BeamHead derives the positive-bank translation by requiring every reconstructed profile point to remain outside the +201 mm source ray and choosing the smallest translation that satisfies all points.
+  - The negative bank is its exact reflection.
+  - For the current profile, the physical midplane reference is 103.90517 mm from central axis in the MLC plane.
+  - That physical reference projects to 204.135894 mm at isocentre; it is an internal placement coordinate, not the reported leaf edge.
+  - A profile point at local Z = +15 mm becomes tangent to the 201 mm setting ray.
+  - The tangent remains 1 mm outside the +/-200 mm maximum jaw-field edge, consistent with the no-shading field-light observation.
+  - Geometry QA now treats 201 mm rounded-tip tangency as a construction requirement for each bank.
+  - The previous intrusion/clearance observation and user-facing warning are removed.

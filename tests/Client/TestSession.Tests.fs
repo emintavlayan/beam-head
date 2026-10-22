@@ -29,8 +29,6 @@ module TestSessionTests =
                         Tolerance = 0.000001
                     }
                 ]
-                MlcShadowHalfWidth = 198.0<mm>
-                MlcFieldClearance = 0.0<mm>
             }
     }
 

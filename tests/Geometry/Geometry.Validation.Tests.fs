@@ -41,7 +41,7 @@ module GeometryValidationTests =
     /// Checks that missing evidence cannot produce an overall pass.
     [<Fact>]
     let ``empty QA reports cannot pass`` () =
-        let report = {Measurements = []; MlcShadowHalfWidth = 0.0<mm>; MlcFieldClearance = 0.0<mm>}
+        let report = {Measurements = []}
         Assert.False(GeometryQa.passes report)
 
     /// Checks the source and corner vertices, winding, planarity and closure of a known pyramid.

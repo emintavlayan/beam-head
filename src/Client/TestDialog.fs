@@ -406,14 +406,6 @@ let View
                             prop.className "rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800"
                             prop.text "The STL will download automatically after successful verification."
                         ]
-                    match model.Geometry with
-                    | Some report when model.Phase = Completed && report.MlcFieldClearance < 0.0<mm> ->
-                        Html.p [
-                            prop.className "rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800"
-                            prop.text
-                                $"Rounded MLC warning: shadow half-width is {formatFixed 3 (float report.MlcShadowHalfWidth)} mm at isocentre and enters the requested X opening by {formatFixed 3 (float (-report.MlcFieldClearance))} mm."
-                        ]
-                    | _ -> Html.none
                     chapter
                         model
                         active

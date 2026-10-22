@@ -108,4 +108,4 @@ let exportFileName field =
     sprintf "truebeam-%dx%dmm-mlc%dmm.stl"
         (int (float (JawField.xSize field)))
         (int (float (JawField.ySize field)))
-        (int (float TrueBeamMlc.deliveryTipAtIsocentre))
+        (int (float TrueBeamMlc.deliveryTipSettingAtIsocentre))

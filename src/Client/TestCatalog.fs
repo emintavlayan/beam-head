@@ -228,8 +228,8 @@ let private sharedChecks = [
         "domain-27"
         Domain
         "MLC parameters and placement"
-        "Tip reference at MLC plane is derived from its isocentre setting"
-        TrueBeamMlcTests.``tip reference at MLC plane is derived from its isocentre setting``
+        "Physical tip reference is derived from the rounded profile tangent"
+        TrueBeamMlcTests.``physical tip reference is derived from rounded profile tangent``
     shared
         "domain-28"
         Domain
@@ -294,20 +294,20 @@ let private sharedChecks = [
         "domain-38"
         Domain
         "MLC parameters and placement"
-        "MLC bank tip references match the delivered isocentre setting"
-        TrueBeamMlcTests.``MLC bank tip references match the delivered isocentre setting``
+        "MLC bank references match the tangent-compensated physical placement"
+        TrueBeamMlcTests.``MLC bank references match the tangent compensated physical placement``
     shared
         "domain-39"
         Domain
         "MLC parameters and placement"
-        "MLC bank tips project to plus and minus 201 millimetres at isocentre"
-        TrueBeamMlcTests.``MLC bank tips project to plus and minus 201 millimetres at isocentre``
+        "MLC rounded profiles are tangent at plus and minus 201 millimetres"
+        TrueBeamMlcTests.``MLC rounded profiles are tangent at plus and minus 201 millimetres``
     shared
         "domain-40"
         Domain
         "MLC parameters and placement"
-        "MLC midplane tip references are 1 millimetre outside the 400 millimetre jaw field"
-        TrueBeamMlcTests.``MLC midplane tip references are 1 millimetre outside the 400 millimetre jaw field``
+        "Rounded-tip setting is one millimetre outside the maximum jaw field"
+        TrueBeamMlcTests.``rounded tip setting is one millimetre outside the maximum jaw field``
     shared
         "domain-41"
         Domain
@@ -556,10 +556,10 @@ let private productionDefinitions = [
         Steps = 1
     }
     {
-        Id = "rounded-shadow"
+        Id = "rounded-tangent"
         Chapter = JscadGeometry
-        Group = "MLC silhouette"
-        Statement = "The rounded MLC shadow is distinguished from its tip setting"
+        Group = "MLC field edge"
+        Statement = "Both rounded MLC surfaces match the reported leaf setting"
         Steps = 1
     }
 ]
@@ -628,7 +628,7 @@ let prepare field =
                 "mlc-defects", 5
                 "collision-defects", 6
                 "light-defects", 7
-                "rounded-shadow", 8
+                "rounded-tangent", 8
             ] do
             yield {
                 CheckId = id

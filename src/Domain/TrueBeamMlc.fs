@@ -6,11 +6,17 @@ module TrueBeamMlc =
     /// The MLC reference midplane distance downstream from the source.
     let mlcMidplaneZ = 509.0<mm>
 
-    /// The positive leaf-tip delivery position projected at isocentre.
-    let deliveryTipAtIsocentre = 201.0<mm>
+    /// The positive MLC leaf-position setting reported at isocentre for TSEBT delivery.
+    let deliveryTipSettingAtIsocentre = 201.0<mm>
 
     /// The nominal Millennium leaf coverage perpendicular to leaf travel at isocentre.
     let nominalLeafCoverageAtIsocentre = 400.0<mm>
+
+    /// The maximum jaw-field boundary at isocentre.
+    let maximumJawFieldHalfWidthAtIsocentre = nominalLeafCoverageAtIsocentre / 2.0
+
+    /// The projected tangent coordinate represented by the reported rounded-leaf setting.
+    let roundedTipTangentAtIsocentre = deliveryTipSettingAtIsocentre
 
     /// The simplified physical bank envelope projected at isocentre, modelled 5 mm beyond the nominal field on each side.
     let simplifiedBankEnvelopeAtIsocentre = 410.0<mm>
@@ -40,10 +46,6 @@ module TrueBeamMlc =
     /// Projects a physical coordinate at a source-origin plane forward to isocentre.
     let projectFromPlaneToIsocentre (coordinate: float<mm>) (planeZ: float<mm>) =
         coordinate * TrueBeamGeometry.isocentreZ / planeZ
-
-    /// The derived positive-bank tip reference coordinate at the physical MLC plane.
-    let tipReferenceXAtMlcPlane =
-        projectFromIsocentreToPlane deliveryTipAtIsocentre mlcMidplaneZ
 
     /// Derives the physical Y span of the simplified bank envelope at a source-frame Z plane.
     let bankSpanAtPlane planeZ =
@@ -99,6 +101,20 @@ module TrueBeamMlc =
         { X = 8.36303<mm>; Z = 33.41531<mm> }
         { X = 9.18152<mm>; Z = halfThickness }
     ]
+
+    /// Derives the physical bank translation that makes the rounded profile tangent to the reported setting ray.
+    let tipReferenceXAtMlcPlane =
+        localProfile
+        |> List.map (fun point ->
+            projectFromIsocentreToPlane
+                roundedTipTangentAtIsocentre
+                (mlcMidplaneZ + point.Z)
+            - point.X)
+        |> List.max
+
+    /// Projects the physical midplane reference after rounded-tip tangent compensation to isocentre.
+    let physicalTipReferenceAtIsocentre =
+        projectFromPlaneToIsocentre tipReferenceXAtMlcPlane mlcMidplaneZ
 
     /// The local bank profile with its Y half-span derived from each point's source-frame Z.
     let localEnvelopeProfile =

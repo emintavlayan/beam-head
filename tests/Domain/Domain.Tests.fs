@@ -256,7 +256,7 @@ module TrueBeamMlcTests =
 
     [<Fact>]
     let ``delivery tip setting is 201 millimetres at isocentre`` () =
-        Assert.Equal(201.0<mm>, TrueBeamMlc.deliveryTipAtIsocentre)
+        Assert.Equal(201.0<mm>, TrueBeamMlc.deliveryTipSettingAtIsocentre)
 
     [<Fact>]
     let ``nominal leaf coverage and simplified bank envelope remain separate`` () =
@@ -264,12 +264,12 @@ module TrueBeamMlcTests =
         Assert.Equal(410.0<mm>, TrueBeamMlc.simplifiedBankEnvelopeAtIsocentre)
 
     [<Fact>]
-    let ``tip reference at MLC plane is derived from its isocentre setting`` () =
+    let ``physical tip reference is derived from rounded profile tangent`` () =
         let projectedBackToIsocentre =
             TrueBeamMlc.projectFromPlaneToIsocentre TrueBeamMlc.tipReferenceXAtMlcPlane TrueBeamMlc.mlcMidplaneZ
 
-        assertClose 102.309<mm> TrueBeamMlc.tipReferenceXAtMlcPlane
-        assertClose 201.0<mm> projectedBackToIsocentre
+        assertClose 103.90517<mm> TrueBeamMlc.tipReferenceXAtMlcPlane
+        assertClose 204.1358939096267<mm> projectedBackToIsocentre
 
     [<Fact>]
     let ``bank span follows source projection through the MLC thickness`` () =
@@ -383,12 +383,12 @@ module TrueBeamMlcTests =
         Assert.True(positive.EnvelopeProfile = negative.EnvelopeProfile)
 
     [<Fact>]
-    let ``MLC bank tip references match the delivered isocentre setting`` () =
+    let ``MLC bank references match the tangent compensated physical placement`` () =
         let negative = placement NegativeBank
         let positive = placement PositiveBank
 
-        assertClose -102.309<mm> negative.TipReference.X
-        assertClose 102.309<mm> positive.TipReference.X
+        assertClose -103.90517<mm> negative.TipReference.X
+        assertClose 103.90517<mm> positive.TipReference.X
         Assert.Equal(-TrueBeamMlc.tipReferenceXAtMlcPlane, negative.TipReference.X)
         Assert.Equal(TrueBeamMlc.tipReferenceXAtMlcPlane, positive.TipReference.X)
 
@@ -397,24 +397,30 @@ module TrueBeamMlcTests =
             Assert.Equal(509.0<mm>, bank.TipReference.Z)
 
     [<Fact>]
-    let ``MLC bank tips project to plus and minus 201 millimetres at isocentre`` () =
-        let negativeProjection =
-            TrueBeamMlc.projectFromPlaneToIsocentre (placement NegativeBank).TipReference.X TrueBeamMlc.mlcMidplaneZ
+    let ``MLC rounded profiles are tangent at plus and minus 201 millimetres`` () =
+        for bank in TrueBeam.mlcBanks do
+            let sign = if bank.Side = PositiveBank then 1.0 else -1.0
+            let tangent =
+                bank.EnvelopeProfile
+                |> List.map (fun point ->
+                    (sign * bank.TipReference.X + point.X)
+                    * TrueBeamGeometry.isocentreZ
+                    / (bank.TipReference.Z + point.Z))
+                |> List.min
 
-        let positiveProjection =
-            TrueBeamMlc.projectFromPlaneToIsocentre (placement PositiveBank).TipReference.X TrueBeamMlc.mlcMidplaneZ
+            assertClose TrueBeamMlc.roundedTipTangentAtIsocentre tangent
 
-        assertClose -201.0<mm> negativeProjection
-        assertClose 201.0<mm> positiveProjection
-
-    /// Checks nominal midplane-reference clearance separately from the rounded-tip silhouette.
+    /// Checks that the reported tangent setting clears the maximum jaw field.
     [<Fact>]
-    let ``MLC midplane tip references are 1 millimetre outside the 400 millimetre jaw field`` () =
+    let ``rounded tip setting is one millimetre outside the maximum jaw field`` () =
         let clearance =
-            TrueBeamMlc.deliveryTipAtIsocentre - (JawField.xSize JawField.fullSize / 2.0)
+            TrueBeamMlc.roundedTipTangentAtIsocentre
+            - TrueBeamMlc.maximumJawFieldHalfWidthAtIsocentre
 
-        Assert.Equal(200.0<mm>, (JawField.xSize JawField.fullSize / 2.0))
-        Assert.Equal(201.0<mm>, TrueBeamMlc.deliveryTipAtIsocentre)
+        Assert.Equal(200.0<mm>, TrueBeamMlc.maximumJawFieldHalfWidthAtIsocentre)
+        Assert.Equal(201.0<mm>, TrueBeamMlc.deliveryTipSettingAtIsocentre)
+        Assert.Equal(201.0<mm>, TrueBeamMlc.roundedTipTangentAtIsocentre)
+        assertClose 204.1358939096267<mm> TrueBeamMlc.physicalTipReferenceAtIsocentre
         assertClose 1.0<mm> clearance
 
     [<Fact>]

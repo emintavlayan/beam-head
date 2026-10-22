@@ -454,7 +454,7 @@ let private controlsCard (model: FieldControls.Model) pendingExport dispatch =
                             ]
                             Html.p [
                                 prop.className "mt-1 text-sm text-base-content/60"
-                                prop.text $"Leaf tips: +/-{float TrueBeamMlc.deliveryTipAtIsocentre} mm at isocentre"
+                                prop.text $"Machine setting: +/-{float TrueBeamMlc.deliveryTipSettingAtIsocentre} mm at isocentre"
                             ]
                         ]
                     ]
