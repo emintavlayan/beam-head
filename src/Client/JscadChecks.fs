@@ -372,5 +372,5 @@ let groups = [
     "MLC placement mutations", mlcMutations
     "Collision and ray-path mutations", collisionAndPathMutations
     "Field-light pyramid mutations", fieldLightMutations
-    "Rounded-tip field tangent", roundedTipTangent
+    "402 mm field-pyramid contact", roundedTipTangent
 ]
