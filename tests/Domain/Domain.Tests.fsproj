@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="paket.references" />
+    <Compile Include="..\..\src\Client\FieldControls.fs" Link="FieldControls.fs" />
     <Compile Include="Domain.Tests.fs" />
   </ItemGroup>
   <ItemGroup>

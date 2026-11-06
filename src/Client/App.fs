@@ -11,10 +11,7 @@ importSideEffects "./index.css"
 open Elmish.HMR
 #endif
 
-Program.mkSimple Index.init Index.update Index.view
-#if DEBUG
-|> Program.withConsoleTrace
-#endif
+Program.mkProgram Index.init Index.update Index.view
 |> Program.withReactSynchronous "elmish-app"
 
 |> Program.run

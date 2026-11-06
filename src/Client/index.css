@@ -11,3 +11,23 @@ body,
 body {
     margin: 0;
 }
+
+.qa-dialog {
+    width: min(1120px, calc(100vw - 32px));
+    height: min(90vh, 1000px);
+    max-width: none;
+    max-height: calc(100dvh - 32px);
+    padding: 0;
+    border: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    color: #0f172a;
+    background: #fff;
+    box-shadow: 0 24px 80px rgb(15 23 42 / 30%);
+}
+.qa-dialog[open] { display: flex; flex-direction: column; }
+.qa-dialog::backdrop { background: rgb(15 23 42 / 55%); }
+.qa-dialog-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+@media (max-width: 640px) {
+    .qa-dialog { width: calc(100vw - 16px); height: calc(100dvh - 16px); max-height: calc(100dvh - 16px); border-radius: 12px; }
+}

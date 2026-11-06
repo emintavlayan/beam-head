@@ -52,7 +52,13 @@ Target.create "Run" (fun _ ->
     ]
     |> runParallel)
 
-Target.create "RunTestsHeadless" (fun _ -> run dotnet [ "test" ] domainTestsPath)
+Target.create "RunGeometryTests" (fun _ -> run npm [ "run"; "test:geometry" ] clientPath)
+
+Target.create "RunTestsHeadless" (fun _ ->
+    run dotnet [ "test" ] domainTestsPath
+    run dotnet [ "test"; "tests/Geometry/Geometry.Tests.fsproj" ] "."
+    run dotnet [ "test"; "tests/Client/Client.Tests.fsproj" ] "."
+    run npm [ "run"; "test:geometry" ] clientPath)
 
 Target.create "WatchRunTests" (fun _ ->
     [ "domain", dotnet [ "watch"; "test"; "--no-restore" ] domainTestsPath ]
@@ -67,6 +73,7 @@ let dependencies = [
     "Clean" ==> "RestoreClientDependencies" ==> "Build" ==> "Run"
 
     "RestoreClientDependencies" ==> "Build" ==> "RunTestsHeadless"
+    "RestoreClientDependencies" ==> "RunGeometryTests"
     "RestoreClientDependencies" ==> "Build" ==> "WatchRunTests"
 ]
 

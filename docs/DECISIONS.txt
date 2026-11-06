@@ -162,14 +162,10 @@ Times are approximate working-session times unless a Git commit time is shown.
   - This avoids inventing undocumented mechanical pivot locations.
 
 
-13:00 - Fixed the jaw focusing model around the real source extent
-  - TrueBeam jaw divergence should not be treated as if every jaw face focuses to a mathematical point on CAX.
-  - Lloyd reports the jaw divergence as projecting back to a 3 x 3 mm square in the target/source plane.
-  - For a symmetric field, each jaw edge therefore uses the corresponding source-plane edge:
-    - positive side: +1.5 mm
-    - negative side: -1.5 mm
-  - The field edge at isocentre is connected to the corresponding +/-1.5 mm source-plane edge when calculating jaw position and angle.
-  - This matters more to Monte Carlo behaviour than reproducing an undocumented carriage mechanism.
+13:00 - Defined source-centred jaw divergence
+  - Each aperture-forming jaw face follows a ray from CAX at the target/source plane to the selected field edge at isocentre.
+  - A symmetric 400 mm field uses aperture edges at +/-200 mm at isocentre.
+  - The source-centred rays determine the jaw reference positions and angles.
 
 
 13:10 - Fixed the X-jaw working geometry convention
@@ -243,7 +239,6 @@ Evidence used for today's jaw decisions
   - Samantha A. M. Lloyd, PhD thesis, 2017:
     - "Measurement and Monte Carlo simulation of electron fields for modulated electron radiation therapy"
     - Chapter 6 / jaw-model discussion and Figure 6.2 were used for the TrueBeam jaw trajectory/focusing model.
-    - Important point used today: jaw divergence projects back to a 3 x 3 mm square in the target/source plane.
 
   - Maduka M. Kaluarachchi et al., Medical Physics, 2020:
     - "Validation of a Monte Carlo model for multi leaf collimator based electron delivery"
@@ -336,24 +331,24 @@ Evidence used for today's jaw decisions
   - Scale the grid only; do not create a custom grid renderer.
   - Use a 1000 x 1000 mm grid with 50 mm and 5 mm ticks so the visual density stays similar to normal JSCAD.
 
-11:12 - Rechecked the retracted Millennium 120 position against the existing TOPAS model
-  - Existing TOPAS beamlines place the MLC reference at Z = -49.1 cm in isocentre coordinates.
+11:12 - Defined the Millennium 120 delivery position
+  - Superseded on 2026-10-22: the reported setting is a rounded-surface tangent coordinate, not a physical midplane coordinate.
+  - The MLC reference is Z = -49.1 cm in isocentre coordinates.
   - With the source at Z = -100 cm this gives a source-to-MLC reference distance of 50.9 cm.
-  - Existing MLC banks are positioned at X = +/-10.36324 cm at this plane.
-  - Projected to isocentre this is exactly +/-20.36 cm.
-  - The retracted MLC tip is therefore 3.6 mm outside the +/-20.0 cm jaw setting at isocentre.
-  - Keep these values in BeamHead so new geometry matches the TSEBT simulations already in use.
+  - The delivered leaf-tip setting supplied by the user is +/-20.10 cm at isocentre.
+  - Source projection places the bank tips at X = +/-10.2309 cm at the MLC midplane.
+  - The delivered MLC tips are 1 mm outside the +/-20.0 cm jaw setting at isocentre.
 
 11:15 - Fixed the simplified Millennium 120 model for the current TSEBT geometry
   - Published Millennium 120 geometry supports a 67 mm beam-axis thickness, 80 mm rounded leaf-tip radius and 11.3 degree outer tip geometry.
   - With our 50.9 cm MLC midplane and 67 mm thickness, the upstream surface is 47.55 cm from source.
   - This is consistent with Lloyd describing the Millennium MLC as about 47 cm from source.
   - Use the centre of the beam-facing rounded face at the MLC midplane as the bank reference point.
-  - Current TSEBT simulations always use the MLC fully retracted.
+  - The TSEBT geometry uses the uniform delivered leaf-tip setting of +/-201 mm at isocentre.
   - Model the MLC as two continuous solid bank envelopes rather than 120 individual leaves.
   - Preserve the rounded beam-facing scattering surface reconstructed in the Excel profile.
   - Rear bank length, smooth outer blending, omission of individual leaves and omission of tongue-and-groove are explicit modelling approximations.
-  - This is acceptable for the current retracted configuration because the beam-facing leaf-end surface and nearby tungsten are the important MLC geometry for electron scatter.
+  - This is acceptable for the current TSEBT delivery configuration because the beam-facing leaf-end surface and nearby tungsten are the important MLC geometry for electron scatter.
   - If BeamHead later supports MLC-shaped fields, replace this approximation with detailed individual leaf geometry.
   - Evidence used:
     - Hariri et al. for the 8 cm rounded tip and 11.3 degree outer geometry.
@@ -369,28 +364,30 @@ Evidence used for today's jaw decisions
   - No geometry, coordinate or STL behaviour changed.
 
 11:28 - Fixed the first simplified Millennium 120 MLC model
-  - Current TSEBT simulations always use the MLC fully retracted, so we model two continuous tungsten bank envelopes instead of 120 individual leaves.
+  - Superseded on 2026-10-22: direct projection of 201 mm to 102.309 mm did not account for the rounded-tip tangent convention.
+  - The TSEBT delivery position places all leaf tips at +/-201 mm at isocentre, so we model two continuous tungsten bank envelopes instead of 120 individual leaves.
   - Existing TOPAS geometry places the MLC at Z = -491 mm from isocentre, equal to 509 mm from source.
-  - Existing TOPAS bank positions are +/-103.6324 mm at the MLC plane, which project to +/-203.6 mm at isocentre.
-  - The MLC therefore remains 3.6 mm farther out than the +/-200 mm jaw setting used for the 400 x 400 mm field.
+  - Bank tip positions are +/-102.309 mm at the MLC plane, derived from the delivered +/-201 mm setting at isocentre.
+  - The MLC therefore remains 1 mm farther out than the +/-200 mm jaw setting used for the 400 x 400 mm field.
   - Published Millennium geometry supports approximately 67 mm beam-axis thickness, an 80 mm rounded leaf-tip radius and approximately 11.3 degree outer tip geometry.
   - Keep the centre of the beam-facing rounded tip at the MLC midplane as the bank reference point.
   - Preserve the rounded X-Z profile reconstructed in Excel as the current scattering-face model.
   - The rounded outer transition, 106.89 mm rear extent, constant 203.6 mm bank extrusion and omission of individual leaves/tongue-and-groove are explicit modelling approximations.
-  - This simplification is intended only for the fully retracted TSEBT configuration; MLC-shaped fields would require a more detailed individual-leaf model.
+  - This simplification is intended only for the uniform TSEBT leaf-tip delivery position; MLC-shaped fields would require a more detailed individual-leaf model.
   - Evidence:
     - Hariri et al., JACMP 2010 - Varian rounded tip geometry.
     - Bergman et al., JACMP 2014 - Millennium 120 thickness, 8 cm tip radius and 11.3 degree tip angle.
     - Lloyd, PhD thesis 2017 - Millennium 120 location, rounded/divergent geometry and retracted electron operation.
     - Kaluarachchi et al., Medical Physics 2020 - importance of MLC leaf-end/side scattering for electron Monte Carlo.
-    - Existing TSEBT TOPAS inputs - MLC Z = -49.1 cm and bank X = +/-10.36324 cm.
+    - TSEBT delivery setting supplied by the user - leaf tips at +/-20.10 cm at isocentre; MLC Z = -49.1 cm in the isocentre frame.
 
 13:18 - Removed hardcoded derived MLC geometry values
-  - The retracted MLC setting is defined at isocentre as +/-203.6 mm.
-  - The physical tip position at the 509 mm MLC plane is derived by source projection and equals +/-103.6324 mm.
+  - Superseded on 2026-10-22 for the physical X reference; the current reference is derived from the full rounded profile and the 201 mm tangent ray.
+  - The MLC delivery setting is defined at isocentre as +/-201 mm.
+  - The physical tip position at the 509 mm MLC plane is derived by source projection and equals +/-102.309 mm.
   - The Millennium bank span is defined as 400 mm projected at isocentre.
   - The simplified physical bank span at the 509 mm MLC plane is independently derived as 203.6 mm.
-  - These two 203.6 mm values describe different quantities and are kept separate even though they are numerically equal.
+  - The leaf-tip setting and the bank span describe different quantities and are calculated independently.
   - The 106.89 mm rear body depth remains an explicit modelling approximation used only to close the reconstructed bank behind the scattering face.
   - Rule: supported machine inputs are stored; dependent physical coordinates are calculated.
 
@@ -403,20 +400,10 @@ Evidence used for today's jaw decisions
   - BEV is intentionally fixed for now so rotating or zooming cannot destroy the meaning of the source-eye view.
   - BEV changes presentation only; geometry and STL export are unchanged.
 
-14:34 - Corrected the interpretation of the TrueBeam 3 x 3 mm jaw focus
-  - The 400 mm jaw value remains the nominal clinical jaw setting.
-  - Lloyd's updated TrueBeam model shifts each physical jaw 1.5 mm away from CAX, producing 3 mm additional jaw separation.
-  - Therefore a nominal +/-200 mm jaw setting is represented geometrically by aperture edges at +/-201.5 mm at isocentre.
-  - Jaw faces focus from +/-1.5 mm in the source plane to +/-201.5 mm at isocentre.
-  - The previous implementation incorrectly connected +/-1.5 mm at the source directly to +/-200 mm at isocentre.
-  - For the current TSEBT configuration, the retracted MLC remains at +/-203.6 mm, 2.1 mm outside the physical jaw edge.
-  - Evidence: Lloyd PhD 2017, Chapter 6 jaw-model comparison and TrueBeam Monte Carlo Data Package discussion.
-
 2026-08-25
 
 08:50 - Made jaw wireframe the default BEV presentation
   - BEV camera geometry was already validated and remains unchanged.
-  - A temporary zero-source-focus test confirmed that the apparent enlarged jaw silhouette is a perspective consequence of the non-zero 3 x 3 mm jaw focus rather than a BEV camera error.
   - Solid jaws obscure the downstream MLC and make the focused aperture faces difficult to inspect from the source.
   - Three-dimensional mode therefore keeps the normal solid jaw rendering while BEV renders the same four jaw solids as wireframe edges.
   - Wireframe edges are extracted from the already transformed JSCAD jaw solids rather than recalculating jaw geometry.
@@ -439,7 +426,7 @@ Evidence used for today's jaw decisions
 
 13:49 - Defined simplified jaw-body extents from geometric coverage assumptions
   - Exact manufacturer outer jaw-body dimensions are not available from the public geometry evidence used by BeamHead.
-  - The jaw aperture geometry, source focus, thickness, reference locations and Y-jaw trajectory remain evidence-based or separately documented assumptions; the outer body extents defined here are intentionally simplified modelling values.
+  - The jaw aperture geometry, source divergence, thickness, reference locations and Y-jaw trajectory remain evidence-based or separately documented assumptions; the outer body extents defined here are intentionally simplified modelling values.
   - Cross-axis body widths were chosen to project to approximately 500 mm at isocentre when viewed from the source.
     - The nominal clinical field is 400 mm wide, so this gives approximately 50 mm of additional material coverage on each side of the field.
     - For the lower X jaws at approximately 406 mm from the source, this gives a physical cross-axis width of 203 mm.
@@ -477,8 +464,67 @@ Evidence used for today's jaw decisions
   - Jaw reference markers use the actual ApertureFaceMidpoint of each calculated jaw placement.
   - MLC reference markers use the actual TipReference of each calculated bank placement.
   - A transparent yellow field-light pyramid represents the nominal 400 x 400 mm clinical field from the source centre to +/-200 mm at the isocentre plane.
-  - The nominal field-light guide is intentionally independent of the 403 mm physical jaw separation and the 410 mm simplified MLC material envelope.
+  - The nominal field-light guide matches the jaw aperture at isocentre and is independent of the 410 mm simplified MLC material envelope.
   - In three-dimensional mode the full pyramid, source marker, isocentre marker and component reference markers are shown.
   - In BEV the source marker and pyramid side surfaces are omitted because the camera is located at the source; the nominal 400 x 400 mm isocentre outline and applicable reference markers remain visible.
   - Component colors are kept semantically consistent: X jaws and X-jaw references are teal, Y jaws and Y-jaw references are orange, MLC geometry and references are violet, jaw wireframes are charcoal, the source marker is navy, the isocentre marker is rose, and the nominal field guide is yellow.
   - Debug structures are intended to make coordinate-frame, aperture-focus and component-placement errors visually obvious without changing the physical model.
+
+2026-10-20
+
+Geometry baseline
+  - Jaw aperture rays run from the source centre to the selected field edge at isocentre.
+  - The reported MLC delivery setting is +/-201 mm at isocentre, supplied from the user's machine observation.
+  - The physical bank translation is derived separately from the rounded-tip tangent condition.
+  - The 400 mm field STL export is named truebeam-400x400mm-mlc201mm.stl.
+
+Field-size controls
+  - Jaw fields support independent X and Y widths from 5 to 400 mm at isocentre, in 1 mm steps.
+  - Controls display centimetres with one decimal place.
+  - Each axis has a slider, numeric input and 10/20/30/36/40 cm commissioning presets.
+  - Square field links Y to X and disables all Y controls; unchecking keeps the current dimensions and enables independent Y editing.
+  - Rechecking Square field copies the current valid X dimension to Y.
+  - Invalid input retains the last valid geometry and disables export.
+  - Jaw placements, the debug field outline and STL filename derive from the same validated JawField value.
+  - The reported MLC delivery setting remains fixed at +/-201 mm at isocentre for every jaw field.
+
+Pre-export geometry validation
+  - Keep the 55 existing Domain tests as regression checks of parameters, placements and control behaviour.
+  - Add a separate Geometry suite: 15 native checker tests plus Fable/Node tests of production JSCAD solids.
+  - Inspect resolved physical polygon coordinates before the viewer mirror and STL serialization.
+  - Define expected source, field planes and component dimensions independently of the construction projection helpers.
+  - Validate aperture planes, projected edges, body extents, trajectories, pyramid geometry, MLC placement/envelope, convex surface structure, component separation and central-axis material paths.
+  - Sweep all 396 supported settings on each jaw axis; use representative rectangular fields for full component checks.
+  - Use a 0.000001 mm numerical construction tolerance; this is not a clinical acceptance threshold.
+  - Display measured/expected requirements in the app and prevent export when a declared construction requirement fails.
+  - Require each generated rounded MLC profile to be tangent to the reported +/-201 mm leaf setting.
+  - Keep the reported +/-201 mm machine setting separate from the derived physical bank reference.
+  - STL serialization, vendor/profile agreement, material assignment and dose remain separate validation tasks.
+
+User-operated test dialog
+  - Present the three validation layers as numbered chapters in a large native modal with one vertical scroll area and fixed actions.
+  - Execute the original 55 Domain and 15 checker test bodies in the browser using a small assertion adapter; keep native xUnit execution unchanged.
+  - Share production JSCAD test functions between the browser and Node suite.
+  - Show 80 statements, 485 real work steps and expandable selected-scene measurements; status squares cannot be manually checked.
+  - Closing or Escape keeps a run active; Stop cancels it. Native dialog handles focus and background inertness.
+  - Bind evidence to the exact captured field and solids. Field changes revoke validity; stale or reordered callbacks receive no credit.
+  - Require all checks and measured geometry to pass before exporting the captured solids.
+  - Include rounded-tip tangency in construction pass/fail.
+  - Add 14 native xUnit workflow tests for progress, cancellation, invalidation, evidence and export gating.
+
+2026-10-22
+
+Corrected rounded-tip placement from field-light observation
+  - Field-light observation shows that the retracted MLC does not shade the 400 x 400 mm jaw field.
+  - The rounded MLC surface defines the reported radiation-field edge by tangent projection rather than by its physical midplane reference.
+  - The +/-201 mm value is retained as the reported machine leaf-position setting and interpreted as the rounded-surface tangent coordinate at isocentre.
+  - BeamHead derives the positive-bank translation by requiring every reconstructed profile point to remain outside the +201 mm source ray and choosing the smallest translation that satisfies all points.
+  - The negative bank is its exact reflection.
+  - For the current profile, the physical midplane reference is 103.90517 mm from central axis in the MLC plane.
+  - That physical reference projects to 204.135894 mm at isocentre; it is an internal placement coordinate, not the reported leaf edge.
+  - A profile point at local Z = +15 mm becomes tangent to the 201 mm setting ray.
+  - The tangent remains 1 mm outside the +/-200 mm maximum jaw-field edge, consistent with the no-shading field-light observation.
+  - Geometry QA now treats 201 mm rounded-tip tangency as a construction requirement for each bank.
+  - The production JSCAD suite constructs an independent 402 x 402 mm source pyramid and requires both rounded bank surfaces to touch its X side planes without entering them.
+  - Contact vertices must span the pyramid's Y face so an isolated coplanar point cannot satisfy the contact check.
+  - The previous intrusion/clearance observation and user-facing warning are removed.

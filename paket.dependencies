@@ -4,6 +4,7 @@ storage: none
 
 nuget SAFE.Server ~> 5
 nuget SAFE.Client ~> 5
+nuget FsToolkit.ErrorHandling 4.18.0
 
 nuget Fake.Core.Target ~> 5
 nuget Fake.IO.FileSystem ~> 5

@@ -37,11 +37,13 @@ type DebugGeometry = {
     NominalFieldCorners: ViewerDisplayPoint array
 }
 
+/// Converts a camera mode to the renderer identifier.
 let private viewerModeName mode =
     match mode with
     | ThreeD -> "threeD"
     | BeamEyeView -> "beamEyeView"
 
+/// Converts a viewer point to its renderer coordinates.
 let private coordinates (point: ViewerDisplayPoint) = [| float point.X; float point.Y; float point.Z |]
 
 /// Renders JSCAD geometry using either the interactive 3D camera or fixed Beam's Eye View.
@@ -53,6 +55,7 @@ let View
         displaySource: ViewerDisplayPoint,
         debugGeometry: DebugGeometry,
         jawGeometry: obj array,
+        field: JawField,
         mlcGeometry: obj array
     ) =
     let container = React.useElementRef ()
@@ -78,7 +81,7 @@ let View
                         (debugGeometry.NominalFieldCorners |> Array.map coordinates)
                 )
             | None -> React.createDisposable ignore),
-        [| box mode; box showDebugGeometry |]
+        [| box mode; box showDebugGeometry; box (JawField.xSize field); box (JawField.ySize field) |]
     )
 
     let cursorClass =

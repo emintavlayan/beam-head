@@ -5,11 +5,14 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Geometry.fs" />
+    <Compile Include="JawField.fs" />
     <Compile Include="TrueBeamGeometry.fs" />
     <Compile Include="TrueBeamJaws.fs" />
     <Compile Include="TrueBeamMlc.fs" />
     <Compile Include="TrueBeam.fs" />
     <Compile Include="CoordinateFrames.fs" />
+    <Compile Include="FieldLight.fs" />
+    <Compile Include="GeometryQa.fs" />
     <Content Include="paket.references" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

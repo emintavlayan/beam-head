@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../src/Client/JscadGeometry.fs" Link="JscadGeometry.fs" />
+    <Compile Include="../../../src/Client/JscadChecks.fs" Link="JscadChecks.fs" />
+    <Compile Include="Jscad.Tests.fs" />
+    <None Include="paket.references" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../src/Domain/BeamHead.Domain.fsproj" />
+  </ItemGroup>
+  <Import Project="../../../.paket/Paket.Restore.targets" />
+</Project>
